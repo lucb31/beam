@@ -149,10 +149,21 @@ object ChargingPointType {
       ),
       0
     )
-    val sessionEnergyInJoules = sessionLength.toDouble / 3600.0 * Math.min(
+    val chargingPowerInKw = Math.min(
       chargingLimits._1,
       ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
-    ) * 3.6e6
+    )
+    val linearCharging = true
+    val maxSessionEnergyInJoules = sessionLengthLimiter.toDouble / 3600.0 * chargingPowerInKw * 3.6e6
+    var sessionEnergyInJoules = maxSessionEnergyInJoules * (0.5 * Math.pow(sessionLength.toDouble / 3600.0, 0.6))
+
+    if (linearCharging) {
+      sessionEnergyInJoules = sessionLength.toDouble / 3600.0 * Math.min(
+        chargingLimits._1,
+        ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
+      ) * 3.6e6
+    }
+
     (sessionLength, sessionEnergyInJoules)
   }
 
