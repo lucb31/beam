@@ -316,15 +316,17 @@ trait BeamHelper extends LazyLogging {
     }
   }
 
-  def runBeamUsing(args: Array[String], isConfigArgRequired: Boolean = true): Unit = {
+  def runBeamUsing(args: Array[String], isConfigArgRequired: Boolean = true): String = {
     val (parsedArgs, config) = prepareConfig(args, isConfigArgRequired)
-
+    var outputDir = ""
     parsedArgs.clusterType match {
       case Some(Worker) => runClusterWorkerUsing(config) //Only the worker requires a different path
       case _ =>
         val (_, outputDirectory) = runBeamWithConfig(config)
         postRunActivity(parsedArgs.configLocation.get, config, outputDirectory)
+        outputDir = outputDirectory
     }
+    outputDir
   }
 
   def prepareConfig(args: Array[String], isConfigArgRequired: Boolean): (Arguments, TypesafeConfig) = {

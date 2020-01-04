@@ -11,7 +11,7 @@ object RunBeam extends BeamHelper {
 
     print(beamAsciiArt)
 
-    runBeamUsing(args)
+    val outputDirectory = runBeamUsing(args)
     logger.info("Exiting BEAM")
     System.exit(0)
   }
