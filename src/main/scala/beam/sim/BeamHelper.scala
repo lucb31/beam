@@ -38,6 +38,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.inject
 import com.typesafe.config.{ConfigFactory, Config => TypesafeConfig}
 import com.typesafe.scalalogging.LazyLogging
+import ftm.RunTools
 import kamon.Kamon
 import org.matsim.api.core.v01.population.Person
 import org.matsim.api.core.v01.{Id, Scenario}
@@ -316,17 +317,15 @@ trait BeamHelper extends LazyLogging {
     }
   }
 
-  def runBeamUsing(args: Array[String], isConfigArgRequired: Boolean = true): String = {
+  def runBeamUsing(args: Array[String], isConfigArgRequired: Boolean = true): Unit = {
     val (parsedArgs, config) = prepareConfig(args, isConfigArgRequired)
-    var outputDir = ""
+
     parsedArgs.clusterType match {
       case Some(Worker) => runClusterWorkerUsing(config) //Only the worker requires a different path
       case _ =>
         val (_, outputDirectory) = runBeamWithConfig(config)
         postRunActivity(parsedArgs.configLocation.get, config, outputDirectory)
-        outputDir = outputDirectory
     }
-    outputDir
   }
 
   def prepareConfig(args: Array[String], isConfigArgRequired: Boolean): (Arguments, TypesafeConfig) = {
@@ -491,12 +490,14 @@ trait BeamHelper extends LazyLogging {
     val injector: inject.Injector = buildInjector(config, beamExecutionConfig.beamConfig, scenario, beamScenario)
     val services = injector.getInstance(classOf[BeamServices])
 
+    RunTools.preRunActivity(config, beamExecutionConfig)
     runBeam(
       services,
       scenario,
       beamScenario,
       beamExecutionConfig.outputDirectory
     )
+    RunTools.postRunActivity(beamExecutionConfig)
     (scenario.getConfig, beamExecutionConfig.outputDirectory)
   }
 
