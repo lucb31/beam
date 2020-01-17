@@ -3,8 +3,7 @@ package ftm
 import beam.sim.config.{BeamConfig, BeamExecutionConfig}
 import beam.utils.beam_to_matsim.EventsByVehicleMode.buildViaFile
 import beam.utils.beam_to_matsim.events_filter.MutableVehiclesFilter
-import ftm.util.CsvTools
-import scripts.ConvertPlan
+import ftm.util.{ConvertPlan, CsvTools}
 
 object RunTools {
   def preRunActivity(config: com.typesafe.config.Config, beamExecutionConfig: BeamExecutionConfig): Unit = {

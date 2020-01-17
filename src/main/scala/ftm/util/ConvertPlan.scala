@@ -1,13 +1,13 @@
-package scripts
+package ftm.util
 
-import beam.utils.matsim_conversion.{ConversionConfig, MatsimPlanConversion}
-import beam.utils.matsim_conversion.MatsimConversionTool.parseFileSubstitutingInputDirectory
-import com.typesafe.scalalogging.StrictLogging
 import java.io.{File, FileInputStream, FileOutputStream, OutputStreamWriter}
-import java.util.zip.{GZIPInputStream, GZIPOutputStream}
+import java.util.zip.GZIPInputStream
+
+import beam.utils.matsim_conversion.MatsimConversionTool.parseFileSubstitutingInputDirectory
+import beam.utils.matsim_conversion.{ConversionConfig, MatsimPlanConversion}
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.io.Source
-import scala.language.postfixOps
 
 object ConvertPlan extends App with StrictLogging {
   logger.info("Hello")
@@ -15,8 +15,14 @@ object ConvertPlan extends App with StrictLogging {
     val beamConfigFilePath = args(0) //"test/input/beamville/beam.conf"
 
     val config = parseFileSubstitutingInputDirectory(beamConfigFilePath)
-    val conversionConfig = ConversionConfig(config)
+    convertWithConfig(config)
 
+  } else {
+    println("Please specify config/file/path parameter")
+  }
+
+  def convertWithConfig(config: com.typesafe.config.Config): Unit = {
+    val conversionConfig = ConversionConfig(config)
     MatsimPlanConversion.generateScenarioData(conversionConfig)
 
     // hacky stuff
@@ -35,8 +41,5 @@ object ConvertPlan extends App with StrictLogging {
       outputStreamWriter.write(line+"\n")
     }
     outputStreamWriter.close()
-
-  } else {
-    println("Please specify config/file/path parameter")
   }
 }
