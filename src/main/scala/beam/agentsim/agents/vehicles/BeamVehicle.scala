@@ -1,7 +1,6 @@
 package beam.agentsim.agents.vehicles
 
 import akka.actor.ActorRef
-import beam.agentsim.agents.PersonAgent
 import beam.agentsim.agents.vehicles.BeamVehicle.{BeamVehicleState, FuelConsumed}
 import beam.agentsim.agents.vehicles.ConsumptionRateFilterStore.{Primary, Secondary}
 import beam.agentsim.agents.vehicles.EnergyEconomyAttributes.Powertrain
@@ -18,6 +17,7 @@ import beam.sim.BeamScenario
 import beam.sim.common.GeoUtils.TurningDirection
 import beam.utils.NetworkHelper
 import beam.utils.logging.ExponentialLazyLogging
+import ftm.util.CsvTools
 import org.matsim.api.core.v01.Id
 import org.matsim.api.core.v01.network.Link
 import org.matsim.vehicles.Vehicle
@@ -166,22 +166,35 @@ class BeamVehicle(
         networkHelper,
         fuelConsumptionDataWithOnlyLength_Id_And_Type
       )
-
-    val primaryEnergyForFullLeg =
-      /*val (primaryEnergyForFullLeg, primaryLoggingData) =*/
+    val (primaryEnergyForFullLeg, primaryEnergyForFullLegData) =
       beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
         fuelConsumptionData,
         fallBack = powerTrain.getRateInJoulesPerMeter,
         Primary
       )
+
+    // get link length based consumption data as well
+    val onlyLengthFuelConsumptionData =
+      BeamVehicle.collectFuelConsumptionData(
+        beamLeg,
+        beamVehicleType,
+        networkHelper,
+        true
+      )
+    val (onlyLengthPrimaryEnergyForFullLeg, onlyLengthPrimaryEnergyForFullLegData) =
+      beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
+        onlyLengthFuelConsumptionData,
+        fallBack = powerTrain.getRateInJoulesPerMeter,
+        Primary
+      )
+
     var primaryEnergyConsumed = primaryEnergyForFullLeg
     var secondaryEnergyConsumed = 0.0
     /*var secondaryLoggingData = IndexedSeq.empty[LoggingData]*/
     if (primaryFuelLevelInJoules < primaryEnergyForFullLeg) {
       if (secondaryFuelLevelInJoules > 0.0) {
         // Use secondary fuel if possible
-        val secondaryEnergyForFullLeg =
-          /*val (secondaryEnergyForFullLeg, secondaryLoggingData) =*/
+        val (secondaryEnergyForFullLeg, secondaryLoggingData) =
           beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
             fuelConsumptionData,
             fallBack = powerTrain.getRateInJoulesPerMeter,
@@ -208,6 +221,36 @@ class BeamVehicle(
       }
     }
     primaryFuelLevelInJoules = primaryFuelLevelInJoules - primaryEnergyConsumed
+
+    // Log calculated energy for debugging and plotting
+    if (beamLeg.mode.value == "car") {
+      CsvTools.writeToCsv(IndexedSeq(
+        id,
+        spaceTime.time,
+        primaryFuelLevelInJoules,
+        primaryEnergyConsumed,
+        onlyLengthPrimaryEnergyForFullLeg,
+        beamLeg.duration,
+        beamLeg.travelPath.distanceInM,
+        beamLeg.startTime
+      ), "vehConsumptionPerTrip.csv", beamScenario.beamConfig)
+
+      if (primaryEnergyForFullLegData.length == fuelConsumptionData.length && primaryEnergyForFullLegData.length > 0) {
+        for (i <- 0 to primaryEnergyForFullLegData.length - 1) {
+          CsvTools.writeToCsv(IndexedSeq(
+            id,
+            fuelConsumptionData(i).linkLength.getOrElse(0),
+            fuelConsumptionData(i).averageSpeed.getOrElse(0),
+            primaryEnergyForFullLegData(i),
+            onlyLengthPrimaryEnergyForFullLegData(i),
+            beamLeg.startTime
+          ), "vehConsumptionPerLink.csv", beamScenario.beamConfig)
+
+        }
+      }
+
+    }
+
     secondaryFuelLevelInJoules = secondaryFuelLevelInJoules - secondaryEnergyConsumed
     FuelConsumed(
       primaryEnergyConsumed,

@@ -206,9 +206,7 @@ class VehicleEnergy(
     fuelConsumptionDatas: IndexedSeq[BeamVehicle.FuelConsumptionData],
     fallBack: BeamVehicle.FuelConsumptionData => Double,
     powerTrainPriority: PowerTrainPriority
-  ): Double = {
-    /*(Double, IndexedSeq[LoggingData]) = {*/
-    /*val loggingData = mutable.Buffer.empty[LoggingData]*/
+  ): (Double, IndexedSeq[Double]) = {
     val consumptionsInJoules: IndexedSeq[Double] = fuelConsumptionDatas
       .map(fuelConsumptionData => {
         /*val (rateInJoulesPerMeter, gradientOption) = getRateUsing(fuelConsumptionData, fallBack, powerTrainPriority)*/
@@ -218,7 +216,8 @@ class VehicleEnergy(
         /*loggingData += LoggingData(fuelConsumptionData.linkId, gradientOption, Option(rateInJoulesPerMeter), Option(finalConsumption))*/
         finalConsumption
       })
-    consumptionsInJoules.sum /*(consumptionsInJoules.sum, loggingData.toIndexedSeq)*/
+
+    (consumptionsInJoules.sum, consumptionsInJoules)
   }
 
   private def getRateUsing(
