@@ -36,30 +36,12 @@ object CsvTools {
     var res = dirs.next().toString()
     while (dirs.hasNext) {
       val currentDir = dirs.next().toString()
-      println(currentDir)
       if (currentDir > res) {
-        println(currentDir + " > " + res)
         res = currentDir
       }
     }
     res = res + "/"
-    /*
-    val splitResult = dirs.next().toString().split("__")
-    println(splitResult(1))
-    var res = splitResult(1)
-    while (dirs.hasNext) {
-      val splitResult = dirs.next().toString().split("__")
-      println(splitResult(1))
-      if (splitResult(1) > res) {
-        println(splitResult(1) + " > " + res)
-        res = splitResult(1)
-      }
-    }
 
-    res = splitResult(0) + "__" + splitResult(1) + "/"
-     */
-
-    print(res)
     res
   }
 }

@@ -14,7 +14,7 @@ object RunTools {
 
     // DEBUG
     CsvTools.writeCsvHeader(
-      "vehicleId,time,primaryFuelLevelAfterLeg,primaryEnergyConsumedInJoule,onlyLengthPrimaryEnergyConsumedInJoule,legDuration,legLength,legStartTime",
+      "vehicleId,spaceTime,primaryFuelLevelAfterLeg,primaryEnergyConsumedInJoule,onlyLengthPrimaryEnergyConsumedInJoule,legDuration,legLength,legStartTime",
       outputDirectory.concat("/vehConsumptionPerTrip.csv")
     )
     CsvTools.writeCsvHeader(
