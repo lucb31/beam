@@ -1,9 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from random import randrange
 from plot_events import parse_event_xml_to_pandas_dataframe_float_time
 from plot_events import get_refuel_events_from_event_xml
+from plot_events import plot_refuel_events_over_duration
 
 def plotConsumptionOverLength(df,plotSpeedBasedConsumption, plotLengthBasedConsumption):
     # Plot Data
@@ -76,7 +78,6 @@ def plotTripConsumptionOverDuration(df, socDf, refuelDf, plot_separate):
     # Divide data into trips
     trips = df.groupby('legStartTime')
     print("found", trips.ngroups, "different trips")
-    fig, ax = plt.subplots()
     #eventsDf = parse_event_xml_to_pandas_dataframe_float_time("events/0.events.filtered.xml")
     #ax.plot(eventsDf.time / 3600, eventsDf.fuel, label='Event data')
 
@@ -128,8 +129,6 @@ def plotTripConsumptionOverDuration(df, socDf, refuelDf, plot_separate):
             ax.legend()
 
         i += 1
-
-
     plt.show()
 
 def plotTripConsumptionOverDistance(df, plotSpeedBasedConsumption, plotLengthBasedConsumption, startingSocInKwh):
@@ -192,11 +191,22 @@ def seconds_to_time_string(seconds):
     string += str(minute)
     return string
 
-pd.set_option('display.max_columns', 500)
-baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/munich-simple__2020-01-18_08-06-39/"
 
-df = pd.read_csv(baseDir + "vehConsumptionPerTrip.csv")
-dfPerLink = pd.read_csv(baseDir + "vehConsumptionPerLink.csv")
+def get_last_dir(path):
+    dirs = os.listdir(path)
+    res = dirs[0]
+    for file in dirs:
+        if file > res:
+            res = file
+    return res
+
+
+pd.set_option('display.max_columns', 500)
+baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
+runDir = baseDir + str(get_last_dir(baseDir)) + "/"
+
+df = pd.read_csv(runDir + "vehConsumptionPerTrip.csv")
+dfPerLink = pd.read_csv(runDir + "vehConsumptionPerLink.csv")
 vehicleId = randrange(df.vehicleId.max())
 vehicleId = 22
 
@@ -204,12 +214,19 @@ vehicleId = 22
 #plotConsumptionOverLength(df, True, True)
 
 # Filter data by vehicle
-print("Plotting energy consumption for vehicle with the id", vehicleId, "of the provided csv data")
+print("Plotting energy consumption for vehicle with the id", vehicleId, "of:", runDir)
 df = df[df.vehicleId == vehicleId]
 dfPerLink = dfPerLink[dfPerLink.vehicleId == vehicleId]
 
+# Compare refuel events
+refuelDf = get_refuel_events_from_event_xml(runDir + "ITERS/it.0/0.events.xml")
+refuelDf['chargingType'] = 'NonLinear'
+refuelDfLinear = get_refuel_events_from_event_xml(baseDir + "__LINEAR_CHARGING_munich-simple/" + "ITERS/it.0/0.events.xml")
+refuelDfLinear['chargingType'] = 'Linear'
+refuelDfLinearSocDep = get_refuel_events_from_event_xml(baseDir + "__LINEAR_SOC_DEP_CHARGING_munich-simple/" + "ITERS/it.0/0.events.xml")
+refuelDfLinearSocDep['chargingType'] = 'LinearSocDep'
 
-refuelDf = get_refuel_events_from_event_xml(baseDir+"ITERS/it.0/0.events.xml")
+plot_refuel_events_over_duration([refuelDf, refuelDfLinear, refuelDfLinearSocDep])
 refuelDf = refuelDf[refuelDf.vehicle == str(vehicleId)]
 
 # Draw plots

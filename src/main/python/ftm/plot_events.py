@@ -103,6 +103,43 @@ def filter_events(input_filename, vehicle_ids, output_filename=None):
 
     return tree
 
+def plot_refuel_events_over_duration(dfs):
+    df = dfs[0]
+
+    # Plot Data
+    fig, ax = plt.subplots(3,1, figsize=(12,12))
+    title = 'Vehicle energy charged for different refuel events'
+    markerSize = 10
+
+    for df in dfs:
+        print()
+        xvals = df['duration'].values / 60
+        yvals = df['fuel'].values / 3.6e6
+        ax[0].scatter(xvals, yvals, label=df['chargingType'].iloc[0], s=markerSize)
+
+        yvals = df['fuel'].values / df['duration'].values / 1000
+        ax[1].scatter(xvals, yvals, label=df['chargingType'].iloc[0], s=markerSize)
+
+        xvals = df['fuel'].values / 3.6e6
+        yvals = df['fuel'].values / df['duration'].values / 1000
+        ax[2].scatter(xvals, yvals, label=df['chargingType'].iloc[0], s=markerSize)
+
+    ax[0].set_xlabel('Refueling duration in min')
+    ax[0].set_ylabel('Refueled energy in kWh')
+    ax[0].set_title(title)
+    ax[0].legend()
+    ax[1].set_xlabel('Refueling duration in min')
+    ax[1].set_ylabel('Average charging power in kW')
+    ax[1].set_title(title)
+    ax[1].legend()
+    ax[2].set_xlabel('Charged energy in kWh')
+    ax[2].set_ylabel('Average charging power in kW')
+    ax[2].set_title(title)
+    ax[2].legend()
+
+    plt.grid()
+    plt.show()
+
 # specify a date to use for the times
 zero = datetime.datetime(2019,12,19)
 
