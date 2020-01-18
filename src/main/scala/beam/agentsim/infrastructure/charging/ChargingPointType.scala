@@ -1,6 +1,7 @@
 package beam.agentsim.infrastructure.charging
 
 import beam.agentsim.infrastructure.charging.ElectricCurrentType.{AC, DC}
+import ftm.charging.NonlinearChargingModel
 
 import scala.util.matching.Regex
 import scala.util.{Failure, Success, Try}
@@ -139,30 +140,28 @@ object ChargingPointType {
         (vehicleDcChargingLimitsInWatts / 1000.0, batteryCapacityInJoule * 0.8) // DC limits charging to 0.8 * battery capacity
     }
     val sessionLengthLimiter = sessionDurationLimit.getOrElse(Long.MaxValue)
+    val maxChargingPowerInKw = Math.min(
+      chargingLimits._1,
+      ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
+    )
+    val chargingMode = "LinearSocDependent" // TODO Make this a config value
+
+    val chargingPowerInKw = chargingMode match {
+      case "Linear" => maxChargingPowerInKw
+      case "LinearSocDependent" => NonlinearChargingModel.calcChargingPower(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw)
+      case "NonLinear" => NonlinearChargingModel.calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimits)
+    }
+
     val sessionLength = Math.max(
       Math.min(
         sessionLengthLimiter,
         Math.round(
-          (chargingLimits._2 - currentEnergyLevelInJoule) / 3.6e6 / Math
-            .min(chargingLimits._1, ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)) * 3600.0
+          (chargingLimits._2 - currentEnergyLevelInJoule) / 3.6e6 / chargingPowerInKw * 3600.0
         )
       ),
       0
     )
-    val chargingPowerInKw = Math.min(
-      chargingLimits._1,
-      ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
-    )
-    val linearCharging = true
-    val maxSessionEnergyInJoules = sessionLengthLimiter.toDouble / 3600.0 * chargingPowerInKw * 3.6e6
-    var sessionEnergyInJoules = maxSessionEnergyInJoules * (0.5 * Math.pow(sessionLength.toDouble / 3600.0, 0.6))
-
-    if (linearCharging) {
-      sessionEnergyInJoules = sessionLength.toDouble / 3600.0 * Math.min(
-        chargingLimits._1,
-        ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
-      ) * 3.6e6
-    }
+    val sessionEnergyInJoules = sessionLength.toDouble / 3600.0 * chargingPowerInKw * 3.6e6
 
     (sessionLength, sessionEnergyInJoules)
   }
