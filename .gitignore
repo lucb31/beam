@@ -58,4 +58,4 @@ log-path_IS_UNDEFINED/
 test/input/munich-simple/conversion-input/mito_assignment*
 test/input/munich-simple/conversion-input/*.pbf
 test/input/munich-simple/conversion-input/*.osm
-
+venv/
