@@ -287,6 +287,15 @@ class BeamVehicle(
     }
   }
 
+  def fuelAfterRefuelSession(endTime: Int): Double = {
+    var soc = primaryFuelLevelInJoules
+    if (isConnectedToChargingPoint) {
+      val (_, energy) = refuelingSessionDurationAndEnergyInJoules(Some(endTime - spaceTime.time))
+      soc += energy
+    }
+    soc
+  }
+
   def getState: BeamVehicleState =
     BeamVehicleState(
       primaryFuelLevelInJoules,
