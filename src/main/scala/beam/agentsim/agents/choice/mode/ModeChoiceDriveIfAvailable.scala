@@ -8,6 +8,7 @@ import beam.sim.BeamServices
 import beam.sim.config.BeamConfig
 import beam.sim.population.AttributesOfIndividual
 import org.matsim.api.core.v01.population.{Activity, Person}
+import org.matsim.core.utils.misc.Time
 
 import scala.collection.mutable.ListBuffer
 
@@ -48,6 +49,41 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     trips: ListBuffer[EmbodiedBeamTrip],
     person: Person,
     attributesOfIndividual: AttributesOfIndividual
-  ): Double = 0.0
+  ): Double = {
+    val walkingDistanceInM = trips.map(
+      calculateTripWalkingDistanceInM(_)
+    ).sum
+
+    val experiencedPlan = person.getSelectedPlan
+    experiencedPlan.getAttributes.putAttribute("endOfDaySoc", calculateEndOfDaySOC(trips))
+    experiencedPlan.getAttributes.putAttribute("walkingDistanceInM", walkingDistanceInM)
+
+    person.asInstanceOf[Person].addPlan(experiencedPlan)
+    person.removePlan(person.getSelectedPlan)
+    person.asInstanceOf[Person].setSelectedPlan(experiencedPlan)
+
+    walkingDistanceInM
+  }
+
+  def calculateTripWalkingDistanceInM(trip: EmbodiedBeamTrip): Double = {
+    val walkingLegs = trip.legs.filter(_.beamLeg.mode.value == "walk")
+    val walkingTripDistanceInM = walkingLegs.map(_.beamLeg.travelPath.distanceInM).sum
+
+    walkingTripDistanceInM
+  }
+
+  def calculateEndOfDaySOC (trips: ListBuffer[EmbodiedBeamTrip]) : Double = {
+    var lastSoc = 0.0
+    trips.foreach { trip =>
+      trip.legs.foreach { leg =>
+        if (leg.beamLeg.mode.value == "car") {
+          val vehicle = this.beamServices.beamScenario.privateVehicles.get(leg.beamVehicleId).get
+          lastSoc = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt)
+        }
+      }
+    }
+
+    lastSoc
+  }
 
 }
