@@ -852,6 +852,7 @@ trait DrivesVehicle[T <: DrivingData] extends BeamAgent[T] with Stash {
 
   def handleStartCharging(currentTick: Int, vehicle: BeamVehicle) = {
     log.debug("Vehicle {} connects to charger @ stall {}", vehicle.id, vehicle.stall.get)
+    personAttributesIncreaseNumberOfChargingStops(1)
     vehicle.connectToChargingPoint(currentTick)
     eventsManager.processEvent(
       new ChargingPlugInEvent(
@@ -914,6 +915,12 @@ trait DrivesVehicle[T <: DrivingData] extends BeamAgent[T] with Stash {
         log.error("Vehicle has no stall while ending charging event")
     }
 
+  }
+
+  def personAttributesIncreaseNumberOfChargingStops(increment: Int): Unit = {
+    var chargingStops = this.asInstanceOf[PersonAgent].matsimPlan.getAttributes.getAttribute("chargingStops").asInstanceOf[Int]
+    chargingStops += increment
+    this.asInstanceOf[PersonAgent].matsimPlan.getAttributes.putAttribute("chargingStops", chargingStops)
   }
 
 }
