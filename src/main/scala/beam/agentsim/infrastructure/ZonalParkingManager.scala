@@ -74,7 +74,10 @@ class ZonalParkingManager(
           inquiry.beamVehicle match {
             case Some(vehicleType) =>
               vehicleType.beamVehicleType.primaryFuelType match {
-                case Electricity => true
+                case Electricity => inquiry.useChargingSpotIfAvailable match {
+                  case true => true
+                  case _ => false
+                }
                 case _           => false
               }
             case _ => false
@@ -84,7 +87,10 @@ class ZonalParkingManager(
       // allow non-charger ParkingZones
       val returnSpotsWithoutChargers: Boolean = inquiry.activityType.toLowerCase match {
         case "charge" => false
-        case _        => true
+        case _        => inquiry.forceCharging match {
+          case true => false
+          case _ => true
+        }
       }
 
       // ---------------------------------------------------------------------------------------------
