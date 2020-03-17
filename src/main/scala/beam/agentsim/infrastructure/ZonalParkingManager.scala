@@ -29,7 +29,10 @@ class ZonalParkingManager(
   minSearchRadius: Double,
   maxSearchRadius: Double,
   boundingBox: Envelope,
-  mnlMultiplierParameters: ParkingMNL.ParkingMNLConfig
+  mnlMultiplierParameters: ParkingMNL.ParkingMNLConfig,
+  chargingCalculationStepSize: Int,
+  chargingCalculationMode: String
+
 ) extends Actor
     with ActorLogging {
 
@@ -180,7 +183,9 @@ class ZonalParkingManager(
                       beamVehicle.beamVehicleType.primaryFuelCapacityInJoule,
                       1e6,
                       1e6,
-                      parkingDuration
+                      parkingDuration,
+                      chargingCalculationStepSize,
+                      chargingCalculationMode
                     )
                     addedEnergy
                   case None => 0.0 // no charger here
@@ -427,7 +432,9 @@ object ZonalParkingManager extends LazyLogging {
       minSearchRadius,
       maxSearchRadius,
       boundingBox,
-      mnlMultiplierParameters
+      mnlMultiplierParameters,
+      beamConfig.ftm.chargingCalculationStepSize,
+      beamConfig.ftm.chargingCalculationMode
     )
   }
 
@@ -459,7 +466,9 @@ object ZonalParkingManager extends LazyLogging {
       minSearchRadius,
       maxSearchRadius,
       boundingBox,
-      ParkingMNL.DefaultMNLParameters
+      ParkingMNL.DefaultMNLParameters,
+      10,
+      "NonLinear"
     )
   }
 

@@ -221,9 +221,12 @@ trait BeamHelper extends LazyLogging {
     )
 
   def loadScenario(beamConfig: BeamConfig): BeamScenario = {
-    val vehicleTypes = maybeScaleTransit(
+    val vehicleTypes = copyChargingCalculationConfig(
       beamConfig,
-      readBeamVehicleTypeFile(beamConfig.beam.agentsim.agents.vehicles.vehicleTypesFilePath)
+      maybeScaleTransit(
+        beamConfig,
+        readBeamVehicleTypeFile(beamConfig.beam.agentsim.agents.vehicles.vehicleTypesFilePath)
+      )
     )
     val vehicleCsvReader = new VehicleCsvReader(beamConfig)
     val baseFilePath = Paths.get(beamConfig.beam.agentsim.agents.vehicles.vehicleTypesFilePath).getParent
@@ -315,6 +318,17 @@ trait BeamHelper extends LazyLogging {
                      bvt)
         }
       case None => vehicleTypes
+    }
+  }
+
+  def copyChargingCalculationConfig(beamConfig: BeamConfig, vehicleTypes: Map[Id[BeamVehicleType], BeamVehicleType]): Map[Id[BeamVehicleType], BeamVehicleType] = {
+    vehicleTypes.map {
+      case (id, bvt) =>
+        id ->
+          bvt.copy(
+            chargingCalculationMode = beamConfig.ftm.chargingCalculationMode,
+            chargingCalculationStepSize = beamConfig.ftm.chargingCalculationStepSize
+          )
     }
   }
 

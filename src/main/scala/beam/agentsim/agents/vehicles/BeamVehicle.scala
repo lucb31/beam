@@ -277,7 +277,9 @@ class BeamVehicle(
               beamVehicleType.primaryFuelCapacityInJoule,
               1e6,
               1e6,
-              sessionDurationLimit
+              sessionDurationLimit,
+              beamVehicleType.chargingCalculationStepSize,
+              beamVehicleType.chargingCalculationMode
             )
           case None =>
             (0, 0.0)

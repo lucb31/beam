@@ -132,7 +132,9 @@ object ChargingPointType {
     batteryCapacityInJoule: Double,
     vehicleAcChargingLimitsInWatts: Double,
     vehicleDcChargingLimitsInWatts: Double,
-    sessionDurationLimit: Option[Long]
+    sessionDurationLimit: Option[Long],
+    chargingCalculationStepSize: Int,
+    chargingCalculationMode: String
   ): (Long, Double) = {
     val chargingLimits = ChargingPointType.getChargingPointCurrent(chargingPointType) match {
       case AC => (vehicleAcChargingLimitsInWatts / 1000.0, batteryCapacityInJoule)
@@ -144,12 +146,12 @@ object ChargingPointType {
       chargingLimits._1,
       ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
     )
-    val chargingMode = "LinearSocDependent" // TODO Make this a config value
 
-    val chargingPowerInKw = chargingMode match {
+    val chargingPowerInKw = chargingCalculationMode match {
       case "Linear" => maxChargingPowerInKw
       case "LinearSocDependent" => NonlinearChargingModel.calcChargingPower(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw)
-      case "NonLinear" => NonlinearChargingModel.calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimits)
+      case "NonLinear" => NonlinearChargingModel.calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimits, chargingCalculationStepSize)
+      case _ => maxChargingPowerInKw
     }
 
     val sessionLength = Math.max(
