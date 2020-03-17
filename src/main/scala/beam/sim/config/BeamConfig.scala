@@ -5,7 +5,8 @@ package beam.sim.config
 
 case class BeamConfig(
   beam: BeamConfig.Beam,
-  matsim: BeamConfig.Matsim
+  matsim: BeamConfig.Matsim,
+  ftm: BeamConfig.FTM
 )
 
 object BeamConfig {
@@ -2933,6 +2934,22 @@ object BeamConfig {
     }
   }
 
+  case class FTM(
+                keepVehicleSoc: scala.Boolean,
+                chargingCalculationStepSize: scala.Int,
+                chargingCalculationMode: java.lang.String
+                )
+
+  object FTM {
+    def apply(c: com.typesafe.config.Config): BeamConfig.FTM = {
+      BeamConfig.FTM(
+        keepVehicleSoc = c.hasPathOrNull("keepVehicleSoc") && c.getBoolean("keepVehicleSoc"),  // def: false
+        chargingCalculationStepSize = if (c.hasPathOrNull("chargingCalculationStepSize")) c.getInt("chargingCalculationStepSize") else 10,
+        chargingCalculationMode = if (c.hasPathOrNull("chargingCalculationMode")) c.getString("chargingCalculationMode") else "NonLinear"
+      )
+    }
+  }
+
   def apply(c: com.typesafe.config.Config): BeamConfig = {
     BeamConfig(
       beam = BeamConfig.Beam(
@@ -2941,6 +2958,10 @@ object BeamConfig {
       matsim = BeamConfig.Matsim(
         if (c.hasPathOrNull("matsim")) c.getConfig("matsim")
         else com.typesafe.config.ConfigFactory.parseString("matsim{}")
+      ),
+      ftm = BeamConfig.FTM(
+        if (c.hasPathOrNull("ftm")) c.getConfig("ftm")
+        else com.typesafe.config.ConfigFactory.parseString("ftm{}")
       )
     )
   }
