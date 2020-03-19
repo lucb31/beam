@@ -26,6 +26,8 @@ import beam.utils.{DebugLib, NetworkHelper, ProfilingUtils, SummaryVehicleStatsP
 import com.conveyal.r5.transit.TransportNetwork
 import com.google.inject.Inject
 import com.typesafe.scalalogging.LazyLogging
+import ftm.util.CsvTools
+import org.matsim.core.utils.misc.Time
 //import com.zaxxer.nuprocess.NuProcess
 import beam.analysis.PythonProcess
 import org.apache.commons.io.FileUtils
@@ -184,11 +186,33 @@ class BeamSim @Inject()(
     )
 
     ExponentialLazyLogging.reset()
-    beamServices.beamScenario.privateVehicles.values.foreach(
-      _.initializeFuelLevels(Some(beamServices.beamConfig.beam.agentsim.agents.vehicles.meanPrivateVehicleStartingSOC))
+    val iterationNumber = event.getIteration
+
+    CsvTools.writeCsvHeader(
+      "vehicleId,spaceTime,primaryFuelLevelAfterLeg,primaryEnergyConsumedInJoule,onlyLengthPrimaryEnergyConsumedInJoule,legDuration,legLength,legStartTime",
+      "vehConsumptionPerTrip.csv", beamServices.beamConfig, iterationNumber
+    )
+    CsvTools.writeCsvHeader(
+      "vehicleId,linkLength,linkAvgSpeed,energyConsumedInJoule,onlyLengthEnergyConsumedInJoule,legStartTime",
+      "vehConsumptionPerLink.csv", beamServices.beamConfig, iterationNumber
     )
 
-    val iterationNumber = event.getIteration
+    beamServices.beamScenario.privateVehicles.values.foreach(vehicle => {
+      if (beamServices.beamConfig.ftm.keepVehicleSoc) {
+        /*
+        val personId = this.scenario.getHouseholds.getHouseholds.get(vehicle.id).getMemberIds.get(0)
+        val plan = this.scenario.getPopulation.getPersons.get(personId).getSelectedPlan
+        val prevSoc = plan.getAttributes.getAttribute("endOfDaySoc").asInstanceOf[Double]
+         */
+        val socAfterRefueling = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt)
+        vehicle.primaryFuelLevelInJoules = socAfterRefueling
+      }
+      else {
+        vehicle.initializeFuelLevels(Some(beamServices.beamConfig.beam.agentsim.agents.vehicles.meanPrivateVehicleStartingSOC))
+      }
+      vehicle.currentIteration = iterationNumber
+    })
+
 
     val controllerIO = event.getServices.getControlerIO
     if (isFirstIteration(iterationNumber)) {

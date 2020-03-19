@@ -9,18 +9,6 @@ object RunTools {
   def preRunActivity(config: com.typesafe.config.Config, beamExecutionConfig: BeamExecutionConfig): Unit = {
     // TODO Only convert if population file name has changed
     ConvertPlan.convertWithConfig(config)
-    val outputDirectory = beamExecutionConfig.outputDirectory
-    CsvTools.getOutputDirPath(BeamConfig(config))
-
-    // DEBUG
-    CsvTools.writeCsvHeader(
-      "vehicleId,spaceTime,primaryFuelLevelAfterLeg,primaryEnergyConsumedInJoule,onlyLengthPrimaryEnergyConsumedInJoule,legDuration,legLength,legStartTime",
-      outputDirectory.concat("/vehConsumptionPerTrip.csv")
-    )
-    CsvTools.writeCsvHeader(
-      "vehicleId,linkLength,linkAvgSpeed,energyConsumedInJoule,onlyLengthEnergyConsumedInJoule,legStartTime",
-      outputDirectory.concat("/vehConsumptionPerLink.csv")
-    )
   }
 
   def postRunActivity(beamExecutionConfig: BeamExecutionConfig): Unit = {

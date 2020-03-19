@@ -66,6 +66,7 @@ class BeamVehicle(
   var reservedStall: Option[ParkingStall] = None
   var stall: Option[ParkingStall] = None
   var lastUsedStall: Option[ParkingStall] = None
+  var currentIteration: Int = 0
 
   private var connectedToCharger: Boolean = false
   private var chargerConnectedTick: Option[Long] = None
@@ -233,7 +234,7 @@ class BeamVehicle(
         beamLeg.duration,
         beamLeg.travelPath.distanceInM,
         beamLeg.startTime
-      ), "vehConsumptionPerTrip.csv", beamScenario.beamConfig)
+      ), "vehConsumptionPerTrip.csv", beamScenario.beamConfig, currentIteration)
 
       if (primaryEnergyForFullLegData.length == fuelConsumptionData.length && primaryEnergyForFullLegData.length > 0) {
         for (i <- 0 to primaryEnergyForFullLegData.length - 1) {
@@ -244,7 +245,7 @@ class BeamVehicle(
             primaryEnergyForFullLegData(i),
             onlyLengthPrimaryEnergyForFullLegData(i),
             beamLeg.startTime
-          ), "vehConsumptionPerLink.csv", beamScenario.beamConfig)
+          ), "vehConsumptionPerLink.csv", beamScenario.beamConfig, currentIteration)
 
         }
       }
