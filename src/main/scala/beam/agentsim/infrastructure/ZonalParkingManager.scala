@@ -156,8 +156,16 @@ class ZonalParkingManager(
             case None =>
               log.error(s"somehow have a ParkingZone with tazId ${zone.tazId} which is not found in the TAZTreeMap")
               TAZ.DefaultTAZ.coord
-            case Some(taz) =>
-              ParkingStallSampling.availabilityAwareSampling(rand, inquiry.destinationUtm, taz, zone.availability)
+            case Some(taz) => {
+              // Do not sample fixed charging spot locations
+              val zoneId = zone.tazId.toString().toInt
+              if (zoneId > 99) {
+                taz.coord
+              }
+              else {
+                ParkingStallSampling.availabilityAwareSampling(rand, inquiry.destinationUtm, taz, zone.availability)
+              }
+            }
           }
         }
 
