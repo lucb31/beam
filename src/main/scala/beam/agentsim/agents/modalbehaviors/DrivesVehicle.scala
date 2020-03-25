@@ -918,9 +918,10 @@ trait DrivesVehicle[T <: DrivingData] extends BeamAgent[T] with Stash {
   }
 
   def personAttributesIncreaseNumberOfChargingStops(increment: Int): Unit = {
-    var chargingStops = this.asInstanceOf[PersonAgent].matsimPlan.getAttributes.getAttribute("chargingStops").asInstanceOf[Int]
+    val agentPlan = this.asInstanceOf[PersonAgent]._experiencedBeamPlan.getPerson.getSelectedPlan
+    var chargingStops = agentPlan.getAttributes.getAttribute("chargingStops").asInstanceOf[Int]
     chargingStops += increment
-    this.asInstanceOf[PersonAgent].matsimPlan.getAttributes.putAttribute("chargingStops", chargingStops)
+    agentPlan.getAttributes.putAttribute("chargingStops", chargingStops)
   }
 
 }
