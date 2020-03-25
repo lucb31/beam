@@ -6,6 +6,7 @@ import java.util.zip.GZIPInputStream
 import beam.utils.matsim_conversion.MatsimConversionTool.parseFileSubstitutingInputDirectory
 import beam.utils.matsim_conversion.{ConversionConfig, MatsimPlanConversion}
 import com.typesafe.scalalogging.StrictLogging
+import scala.language.postfixOps
 
 import scala.io.Source
 
@@ -27,9 +28,16 @@ object ConvertPlan extends App with StrictLogging {
 
     // hacky stuff
     // Copy vehicleTypes
-    val src = new File(conversionConfig.scenarioDirectory + "/conversion-input/vehicleTypes.csv")
-    val dest = new File(conversionConfig.scenarioDirectory + "/vehicleTypes.csv")
-    new FileOutputStream(dest) getChannel() transferFrom(new FileInputStream(src) getChannel, 0, Long.MaxValue )
+    var src = new File(conversionConfig.scenarioDirectory + "/conversion-input/vehicleTypes.csv")
+    var dest = new File(conversionConfig.scenarioDirectory + "/vehicleTypes.csv")
+    if (src.isFile())
+      new FileOutputStream(dest) getChannel() transferFrom(new FileInputStream(src) getChannel, 0, Long.MaxValue )
+
+    // Copy vehicles
+    src = new File(conversionConfig.scenarioDirectory + "/conversion-input/vehicles.csv")
+    dest = new File(conversionConfig.scenarioDirectory + "/vehicles.csv")
+    if (src.isFile())
+      new FileOutputStream(dest) getChannel() transferFrom(new FileInputStream(src) getChannel, 0, Long.MaxValue )
 
     // Unzip households
     val householdsInput = new File(conversionConfig.scenarioDirectory + "/households.xml.gz")
@@ -37,7 +45,6 @@ object ConvertPlan extends App with StrictLogging {
     val inputStream = new GZIPInputStream(new FileInputStream(householdsInput))
     val outputStreamWriter = new OutputStreamWriter(new FileOutputStream(householdsOutput))
     for (line <- Source.fromInputStream(inputStream).getLines()) {
-      println(line)
       outputStreamWriter.write(line+"\n")
     }
     outputStreamWriter.close()
