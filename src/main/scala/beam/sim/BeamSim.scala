@@ -26,6 +26,7 @@ import beam.utils.{DebugLib, NetworkHelper, ProfilingUtils, SummaryVehicleStatsP
 import com.conveyal.r5.transit.TransportNetwork
 import com.google.inject.Inject
 import com.typesafe.scalalogging.LazyLogging
+import ftm.RunTools
 import ftm.util.CsvTools
 import org.matsim.core.utils.misc.Time
 //import com.zaxxer.nuprocess.NuProcess
@@ -336,6 +337,7 @@ class BeamSim @Inject()(
     delayMetricAnalysis.generateDelayAnalysis(event)
 
     writeEventsAnalysisUsing(event)
+    RunTools.convertEventsToViaEvents(beamConfig, event.getIteration())
   }
 
   private def writeEventsAnalysisUsing(event: IterationEndsEvent) = {
