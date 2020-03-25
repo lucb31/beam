@@ -55,7 +55,9 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     ).sum
 
     val experiencedPlan = person.getSelectedPlan
-    experiencedPlan.getAttributes.putAttribute("endOfDaySoc", calculateEndOfDaySOC(trips))
+    val (endSoc, minSoc) = calculateEndOfDaySOC(trips)
+    experiencedPlan.getAttributes.putAttribute("endOfDaySoc", endSoc)
+    experiencedPlan.getAttributes.putAttribute("minSoc", minSoc)
     experiencedPlan.getAttributes.putAttribute("walkingDistanceInM", walkingDistanceInM)
 
     person.asInstanceOf[Person].addPlan(experiencedPlan)
@@ -72,18 +74,21 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     walkingTripDistanceInM
   }
 
-  def calculateEndOfDaySOC (trips: ListBuffer[EmbodiedBeamTrip]) : Double = {
+  def calculateEndOfDaySOC (trips: ListBuffer[EmbodiedBeamTrip]) : (Double, Double) = {
     var lastSoc = 0.0
+    var minSoc = 1.0
     trips.foreach { trip =>
       trip.legs.foreach { leg =>
         if (leg.beamLeg.mode.value == "car") {
           val vehicle = this.beamServices.beamScenario.privateVehicles.get(leg.beamVehicleId).get
-          lastSoc = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt)
+          val soc = vehicle.primaryFuelLevelInJoules / vehicle.beamVehicleType.primaryFuelCapacityInJoule
+          if (soc < minSoc)  minSoc = soc
+          lastSoc = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt) / vehicle.beamVehicleType.primaryFuelCapacityInJoule
         }
       }
     }
 
-    lastSoc
+    (lastSoc, minSoc)
   }
 
 }

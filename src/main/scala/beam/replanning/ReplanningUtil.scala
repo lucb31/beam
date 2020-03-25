@@ -53,7 +53,7 @@ object ReplanningUtil {
       }
       attributes.putAttribute("modality-style", modalityStyle)
       attributes.putAttribute("scores", scores)
-      copyAttributesFromSelectedPlan(List("endOfDaySoc", "chargeAtActivity", "chargingStops", "walkingDistanceInM"), attributes, person.getSelectedPlan)
+      copyAttributesFromSelectedPlan(List("endOfDaySoc", "chargeAtActivity", "chargingStops", "walkingDistanceInM", "minSoc"), attributes, person.getSelectedPlan)
       if (attributes.getAttribute("modality-style") == null) {
         val i = 0
       }
