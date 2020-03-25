@@ -163,7 +163,8 @@ class ZonalParkingManager(
                 taz.coord
               }
               else {
-                ParkingStallSampling.availabilityAwareSampling(rand, inquiry.destinationUtm, taz, zone.availability)
+                //ParkingStallSampling.availabilityAwareSampling(rand, inquiry.destinationUtm, taz, zone.availability)
+                inquiry.destinationUtm
               }
             }
           }
