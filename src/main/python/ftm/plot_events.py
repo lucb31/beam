@@ -5,53 +5,91 @@ import matplotlib.dates as mdates
 import datetime
 import tikzplotlib
 
+
+def get_persons_to_vehicle_df(input_filename):
+    tree = ET.parse(input_filename)
+    root = tree.getroot()
+    df = pd.DataFrame(columns=['person', 'vehicle'])
+
+    # parse XML
+    for event in root:
+        if 'type' in event.attrib and event.attrib['type'] == 'PathTraversal':
+            if 'driver' in event.attrib:
+                driver = int(event.attrib['driver'])
+                try:
+                    vehicle = int(event.attrib['vehicle'])
+                except ValueError as ex:
+                    vehicle = 0
+                if driver > 0 and vehicle > 0 and len(df[df['person'] == driver].index) == 0:
+                    df = df.append({
+                        'person': driver,
+                        'vehicle': vehicle,
+                    }, ignore_index=True)
+
+    return df
+
 def get_refuel_events_from_event_xml(input_filename):
     tree = ET.parse(input_filename)
     root = tree.getroot()
-    df = pd.DataFrame(columns=['endTime', 'vehicle', 'fuel', 'duration'])
+    df = pd.DataFrame(columns=['endTime', 'vehicle', 'fuel', 'duration', 'fuelAfterCharging', 'parkingTaz', 'locX', 'locY'])
 
     # parse XML
     for event in root:
         if 'type' in event.attrib and event.attrib['type'] == 'RefuelSessionEvent':
             df = df.append({
                 'endTime': float(event.attrib['time']),
-                'vehicle': event.attrib['vehicle'],
+                'vehicle': int(event.attrib['vehicle']),
                 'fuel': float(event.attrib['fuel']),
                 'duration': float(event.attrib['duration']),
+                'fuelAfterCharging': 0.0,
+                'parkingTaz': int(event.attrib['parkingTaz']),
+                'locX': float(event.attrib['locationX']),
+                'locY': float(event.attrib['locationY'])
             }, ignore_index=True)
+        if 'type' in event.attrib and event.attrib['type'] == 'ChargingPlugOutEvent':
+            if df.endTime.iloc[-1] == float(event.attrib['time']):
+                df.fuelAfterCharging.iloc[-1] = float(event.attrib['primaryFuelLevel'])
 
     return df
 
-def parse_event_xml_to_pandas_dataframe(input_filename):
-    tree = ET.parse(input_filename)
+
+def parse_event_xml_to_pandas_dataframe_float_time(input_filename, tree = None, ignore_body_vehicles=True):
+    if tree is None:
+        tree = ET.parse(input_filename)
     root = tree.getroot()
-    df = pd.DataFrame(columns=['time', 'vehicle', 'fuel'])
+    df = pd.DataFrame(columns=['time', 'departureTime', 'arrivalTime', 'vehicle', 'fuel', 'eventType', 'parkingTaz',
+                               'person', 'length'])
 
     # parse XML
     for event in root:
-        if 'primaryFuelLevel' in event.attrib and not 'body' in event.attrib['vehicle']:
-            time = zero + datetime.timedelta(seconds=float(event.attrib['time']))
-            time = mdates.date2num(time)
-            df = df.append({
-                'time': time,
-                'vehicle': event.attrib['vehicle'],
-                'fuel': float(event.attrib['primaryFuelLevel']) / 3.6 / 10 ** 6
-            }, ignore_index=True)
-
-    return df
-
-def parse_event_xml_to_pandas_dataframe_float_time(input_filename):
-    tree = ET.parse(input_filename)
-    root = tree.getroot()
-    df = pd.DataFrame(columns=['time', 'vehicle', 'fuel'])
-
-    # parse XML
-    for event in root:
-        if 'primaryFuelLevel' in event.attrib and not 'body' in event.attrib['vehicle']:
+        if 'primaryFuelLevel' in event.attrib and (
+                (ignore_body_vehicles and 'body' not in event.attrib['vehicle']) or (not ignore_body_vehicles)
+        ):
+            arrival_time = seconds_to_time_string(float(event.attrib['time']))
+            departure_time = arrival_time
+            parking_taz = 0
+            person = ""
+            length = 0
+            if 'parkingTaz' in event.attrib:
+                parking_taz = int(event.attrib['parkingTaz'])
+            if event.attrib['type'] == 'PathTraversal':
+                arrival_time = seconds_to_time_string(float(event.attrib['arrivalTime']))
+                departure_time = seconds_to_time_string(float(event.attrib['departureTime']))
+                length = float(event.attrib['length'])
+            if 'person' in event.attrib:
+                person = event.attrib['person']
+            if 'driver' in event.attrib and person == "":
+                person = event.attrib['driver']
             df = df.append({
                 'time': float(event.attrib['time']),
+                'departureTime': departure_time,
+                'arrivalTime': arrival_time,
                 'vehicle': event.attrib['vehicle'],
-                'fuel': float(event.attrib['primaryFuelLevel']) / 3.6 / 10 ** 6
+                'fuel': float(event.attrib['primaryFuelLevel']) / 3.6 / 10 ** 6,
+                'eventType': event.attrib['type'],
+                'parkingTaz': parking_taz,
+                'person': person,
+                'length': length
             }, ignore_index=True)
 
     return df
@@ -89,7 +127,15 @@ def filter_events(input_filename, vehicle_ids, output_filename=None):
     # parse XML
     for parent in tree.iter():
         for child in parent.findall('event'):
-            if 'vehicle' not in child.attrib or child.attrib['vehicle'] not in vehicle_ids:
+            vehicle = 0
+            if 'vehicle' in child.attrib:
+                try:
+                    vehicle = int(child.attrib['vehicle'])
+                except ValueError as ex:
+                    vehicle = 0
+                    if child.attrib['vehicle'] in vehicle_ids:
+                        vehicle = child.attrib['vehicle']
+            if 'vehicle' not in child.attrib or vehicle not in vehicle_ids:
                 parent.remove(child)
 
     header = '<?xml version="1.0" encoding="utf-8"?>'
@@ -103,50 +149,26 @@ def filter_events(input_filename, vehicle_ids, output_filename=None):
 
     return tree
 
-def plot_refuel_events_over_duration(dfs):
-    df = dfs[0]
 
-    # Plot Data
-    fig, ax = plt.subplots(3,1, figsize=(12,12))
-    title = 'Vehicle energy charged for different refuel events'
-    markerSize = 10
-
-    for df in dfs:
-        print()
-        xvals = df['duration'].values / 60
-        yvals = df['fuel'].values / 3.6e6
-        ax[0].scatter(xvals, yvals, label=df['chargingType'].iloc[0], s=markerSize)
-
-        yvals = df['fuel'].values / df['duration'].values / 1000
-        ax[1].scatter(xvals, yvals, label=df['chargingType'].iloc[0], s=markerSize)
-
-        xvals = df['fuel'].values / 3.6e6
-        yvals = df['fuel'].values / df['duration'].values / 1000
-        ax[2].scatter(xvals, yvals, label=df['chargingType'].iloc[0], s=markerSize)
-
-    ax[0].set_xlabel('Refueling duration in min')
-    ax[0].set_ylabel('Refueled energy in kWh')
-    ax[0].set_title(title)
-    ax[0].legend()
-    ax[1].set_xlabel('Refueling duration in min')
-    ax[1].set_ylabel('Average charging power in kW')
-    ax[1].set_title(title)
-    ax[1].legend()
-    ax[2].set_xlabel('Charged energy in kWh')
-    ax[2].set_ylabel('Average charging power in kW')
-    ax[2].set_title(title)
-    ax[2].legend()
-
-    plt.grid()
-    plt.show()
+def seconds_to_time_string(seconds):
+    hour = int(seconds / 3600)
+    minute = int((seconds - hour * 3600) / 60)
+    string = ""
+    if hour < 10:
+        string += "0"
+    string += str(hour) + ":"
+    if minute < 10:
+        string += "0"
+    string += str(minute)
+    return string
 
 # specify a date to use for the times
 zero = datetime.datetime(2019,12,19)
 
 # Filter
-#inputFile = 'events/0.events.xml'
-#outputFile = 'events/0.events.filtered.xml'
-#vehicleIds = ["22"]
+inputFile = 'events/0.events.xml'
+outputFile = 'events/0.events.filtered.xml'
+vehicleIds = ["22"]
 #tree = filter_events(inputFile, vehicleIds, outputFile)
 
 # Plot
