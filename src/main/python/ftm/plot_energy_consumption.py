@@ -244,41 +244,6 @@ def printTripsSummary(df):
     print("Avg kwh / 100km: \n", avgConsumption)
 
 
-
-def calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit,
-                                stepSize):
-    updatedEnergyLevelInJoule = currentEnergyLevelInJoule
-    currentTimestep = 1
-    xvals = np.array([currentTimestep])
-    yvals = np.array([updatedEnergyLevelInJoule])
-    while (updatedEnergyLevelInJoule < chargingLimit):
-        currentChargingPowerInKw = (0.6 * 0.05 ** (
-                updatedEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
-        stepEnergyInJoule = stepSize * currentChargingPowerInKw * 1000
-        currentTimestep += stepSize
-        updatedEnergyLevelInJoule += stepEnergyInJoule
-        xvals = np.append(xvals, [currentTimestep])
-        yvals = np.append(yvals, [updatedEnergyLevelInJoule])
-
-    avgChargingPowerInKw = (chargingLimit - currentEnergyLevelInJoule) / currentTimestep / 1000
-    return (avgChargingPowerInKw, xvals, yvals)
-
-
-def plot_charging_power_over_energy(e_max_in_j, p_max_in_kw):
-    E_vals = np.linspace(0, e_max_in_j)
-    xvals = E_vals / 3.6e6
-    yvals = (0.6 * 0.05 ** (E_vals / e_max_in_j) + 0.4) * p_max_in_kw
-
-    fig, ax = plt.subplots()
-    ax.plot(xvals, yvals)
-    ax.set_xlabel('SOC in kWh')
-    ax.set_ylabel('Ladeleistung in kW')
-    ax.set_ylim(0, yvals.max())
-    ax.set_title('Ladeleistung in Abhängigkeit des Batterieladezustands')
-    ax.grid()
-    plt.show()
-
-
 def concat_event_info_string(x, y, event_type, taz):
     info_string = concat_trip_info_string(x, y) + "<br>"
     if taz > 0:
@@ -286,8 +251,10 @@ def concat_event_info_string(x, y, event_type, taz):
     else:
         return info_string + str(event_type)
 
+
 def concat_trip_info_string(x, y):
     return seconds_to_time_string(x*3600) + ": " + ("%.2f" % y) + "kWh"
+
 
 def print_refuel_events_for_taz(taz_ids):
     for taz in taz_ids:
@@ -335,8 +302,7 @@ plotly_figure = make_subplots(rows=num_rows, cols=num_cols, subplot_titles=("Ite
 if plotly_stacked_layout:
     plotly_figure = make_subplots(rows=last_iteration+1, cols=1, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"), shared_xaxes=True, vertical_spacing=0.02)
 
-
-
+# Draw plots for every iteration
 for iteration in range(last_iteration + 1):
     # Setup directory
     working_dir = get_iteration_dir(run_dir, iteration)
@@ -354,7 +320,7 @@ for iteration in range(last_iteration + 1):
     # Get refueling data
     df_events_refueling, df_events_parking = get_refuel_and_parking_events_from_event_xml(working_dir + "events.xml")
     print_refuel_events_for_taz([1.0, 100.0])  # Debug: Print refuel events for specific TAZs
-    print_parking_events_for_taz([1.0, 105.0, 203.0], df_events_parking)  # Debug: Print refuel events for specific TAZs
+    print_parking_events_for_taz([1.0, 105.0, 203.0], df_events_parking)  # Debug: Print parking events for specific TAZs
     df_events_refueling = df_events_refueling[df_events_refueling.vehicle == vehicleId]
 
     # Plot setup
@@ -396,10 +362,6 @@ for iteration in range(last_iteration + 1):
 
         # Plot xml data
         path_to_events_xml = working_dir + "events.xml"
-
-        # DEBUG: Print all events of this agent
-        # body-1180299
-
         tree = filter_events(path_to_events_xml, [vehicleId])
         df_events = parse_event_xml_to_pandas_dataframe_float_time(path_to_events_xml, tree)
 
@@ -458,50 +420,3 @@ filter_plans_by_vehicle_id(
     "/home/lucas/IdeaProjects/beam/test/input/munich-simple/households.xml",
     get_iteration_dir(run_dir, 3) + "plans.xml.gz",
     vehicleId)
-# Draw plots
-# printTripsSummary(df)
-# plot_avg_speed_per_link(dfPerLink)
-# plotTripConsumptionOverDuration(dfPerLink, df, refuelDf, True)
-
-
-"""
-E_max_in_J = 2.7e8
-P_max_in_kW = 7.3
-# Plot difference between linear and nonlinear charging
-currentEnergyLevelInJoule = 2.608425116068747E8
-currentEnergyLevelInJoule = 0.608425116068747E8
-batteryCapacityInJoule = 2.699999827E8
-chargingLimit = batteryCapacityInJoule
-maxChargingPowerInKw = 7.2
-stepSize = 100
-fig, ax = plt.subplots()
-
-(avgChargingPowerInKw, xvals, yvals) = calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit, stepSize)
-sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / avgChargingPowerInKw * 3600.0
-print(sessionLengthInS)
-ax.plot(xvals/3600, yvals/3.6e6, label='NonLinear: Stepsize '+str(stepSize))
-ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='NonLinear avg: Stepsize '+str(stepSize))
-
-smallStepSize = 1
-(avgChargingPowerInKwSmallStep, xvals, yvals) = calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit, smallStepSize)
-sessionLengthInSSmallStep = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / avgChargingPowerInKwSmallStep * 3600.0
-ax.plot(xvals/3600, yvals/3.6e6, label='NonLinear: Stepsize '+str(smallStepSize))
-ax.plot([0, sessionLengthInSSmallStep/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='NonLinear avg: Stepsize '+str(smallStepSize))
-print("Charging power stepsize ", stepSize, ":", avgChargingPowerInKw, ", stepSize ", smallStepSize, ":", avgChargingPowerInKwSmallStep, "Difference: ", avgChargingPowerInKw - avgChargingPowerInKwSmallStep, "Time diff:", sessionLengthInS -sessionLengthInSSmallStep)
-
-# Linear soc dep
-chargingPower = (0.6 * 0.05**(currentEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
-sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / chargingPower * 3600.0
-ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Linear SOC dependent')
-
-# Linear
-chargingPower = maxChargingPowerInKw
-sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / chargingPower * 3600.0
-ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Linear SOC independent')
-
-ax.set_title('SOC during charging for different levels of detail')
-ax.set_xlabel('Charging duration in h')
-ax.set_ylabel('SOC in kWh')
-ax.legend()
-plt.show()
-"""
