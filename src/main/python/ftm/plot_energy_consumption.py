@@ -8,9 +8,11 @@ from random import randrange
 import xml.etree.ElementTree as ET
 
 
-from filter_plans import filter_plans_by_vehicle_id
-from plot_events import get_refuel_events_from_event_xml, filter_events, parse_event_xml_to_pandas_dataframe_float_time, \
+from python.ftm.filter_plans import filter_plans_by_vehicle_id
+from python.ftm.plot_events import get_refuel_and_parking_events_from_event_xml, filter_events, parse_event_xml_to_pandas_dataframe_float_time, \
     seconds_to_time_string
+
+from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir
 
 
 def plotConsumptionOverLength(df, plotSpeedBasedConsumption, plotLengthBasedConsumption):
@@ -277,22 +279,6 @@ def plot_charging_power_over_energy(e_max_in_j, p_max_in_kw):
     plt.show()
 
 
-def get_working_dir(base_dir, iteration):
-    return get_iteration_dir(get_run_dir(base_dir), iteration)
-
-def get_run_dir(base_dir):
-    return base_dir + get_latest_run(base_dir) + "/"
-
-def get_latest_run(base_dir):
-    latest_run = ''
-    for entry in scandir.scandir(base_dir):
-        if entry.name > latest_run:
-            latest_run = entry.name
-    return latest_run
-
-def get_iteration_dir(run_dir, iteration):
-    return run_dir + "ITERS/it." + str(iteration) + "/" + str(iteration) + "."
-
 def concat_event_info_string(x, y, event_type, taz):
     info_string = concat_trip_info_string(x, y) + "<br>"
     if taz > 0:
@@ -302,6 +288,26 @@ def concat_event_info_string(x, y, event_type, taz):
 
 def concat_trip_info_string(x, y):
     return seconds_to_time_string(x*3600) + ": " + ("%.2f" % y) + "kWh"
+
+def print_refuel_events_for_taz(taz_ids):
+    for taz in taz_ids:
+        filtered_df = df_events_refueling[df_events_refueling.parkingTaz == taz]
+        if len(filtered_df.index) > 0:
+            print("Refuel events for TAZ", taz)
+            print(filtered_df[['vehicle', 'parkingTaz', 'locX', 'locY', 'fuel']].head(5))
+        else:
+            print("No Refuel events for TAZ", taz)
+
+
+def print_parking_events_for_taz(taz_ids, parking_df):
+    for taz in taz_ids:
+        filtered_df = parking_df[parking_df.parkingTaz == taz]
+        if len(filtered_df.index) > 0:
+            print("5 Parking events for TAZ", taz)
+            print(filtered_df[['vehicle', 'parkingTaz', 'locX', 'locY']].head(5))
+        else:
+            print("No Parking events for TAZ", taz)
+
 
 
 pd.set_option('display.max_columns', 500)
@@ -330,15 +336,6 @@ if plotly_stacked_layout:
     plotly_figure = make_subplots(rows=last_iteration+1, cols=1, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"), shared_xaxes=True, vertical_spacing=0.02)
 
 
-def print_refuel_events_for_taz(taz_ids):
-    for taz in taz_ids:
-        filtered_df = df_events_refueling[df_events_refueling.parkingTaz == taz]
-        if len(filtered_df.index) > 0:
-            print("Refuel events for TAZ", taz)
-            print(filtered_df[['vehicle', 'parkingTaz', 'locX', 'locY']].head(5))
-        else:
-            print("No Refuel events for TAZ", taz)
-
 
 for iteration in range(last_iteration + 1):
     # Setup directory
@@ -355,8 +352,9 @@ for iteration in range(last_iteration + 1):
     df_consumption_per_link = df_consumption_per_link[df_consumption_per_link.vehicleId == vehicleId]
 
     # Get refueling data
-    df_events_refueling = get_refuel_events_from_event_xml(working_dir + "events.xml")
+    df_events_refueling, df_events_parking = get_refuel_and_parking_events_from_event_xml(working_dir + "events.xml")
     print_refuel_events_for_taz([1.0, 100.0])  # Debug: Print refuel events for specific TAZs
+    print_parking_events_for_taz([1.0, 105.0, 203.0], df_events_parking)  # Debug: Print refuel events for specific TAZs
     df_events_refueling = df_events_refueling[df_events_refueling.vehicle == vehicleId]
 
     # Plot setup

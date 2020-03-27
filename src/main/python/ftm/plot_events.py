@@ -28,29 +28,40 @@ def get_persons_to_vehicle_df(input_filename):
 
     return df
 
-def get_refuel_events_from_event_xml(input_filename):
+def get_refuel_and_parking_events_from_event_xml(input_filename):
     tree = ET.parse(input_filename)
     root = tree.getroot()
-    df = pd.DataFrame(columns=['endTime', 'vehicle', 'fuel', 'duration', 'fuelAfterCharging', 'parkingTaz', 'locX', 'locY'])
+    refuel_df = pd.DataFrame(columns=['endTime', 'vehicle', 'fuel', 'duration', 'fuelAfterCharging', 'parkingTaz', 'locX', 'locY'])
+    parking_df = pd.DataFrame(columns=['time', 'vehicle', 'parkingTaz', 'locX', 'locY'])
 
     # parse XML
     for event in root:
-        if 'type' in event.attrib and event.attrib['type'] == 'RefuelSessionEvent':
-            df = df.append({
-                'endTime': float(event.attrib['time']),
-                'vehicle': int(event.attrib['vehicle']),
-                'fuel': float(event.attrib['fuel']),
-                'duration': float(event.attrib['duration']),
-                'fuelAfterCharging': 0.0,
-                'parkingTaz': int(event.attrib['parkingTaz']),
-                'locX': float(event.attrib['locationX']),
-                'locY': float(event.attrib['locationY'])
-            }, ignore_index=True)
-        if 'type' in event.attrib and event.attrib['type'] == 'ChargingPlugOutEvent':
-            if df.endTime.iloc[-1] == float(event.attrib['time']):
-                df.fuelAfterCharging.iloc[-1] = float(event.attrib['primaryFuelLevel'])
+        if 'type' in event.attrib:
+            event_type = event.attrib['type']
+            if event_type == 'RefuelSessionEvent':
+                refuel_df = refuel_df.append({
+                    'endTime': float(event.attrib['time']),
+                    'vehicle': int(event.attrib['vehicle']),
+                    'fuel': float(event.attrib['fuel']),
+                    'duration': float(event.attrib['duration']),
+                    'fuelAfterCharging': 0.0,
+                    'parkingTaz': int(event.attrib['parkingTaz']),
+                    'locX': float(event.attrib['locationX']),
+                    'locY': float(event.attrib['locationY'])
+                }, ignore_index=True)
+            elif event_type == 'ChargingPlugOutEvent':
+                if refuel_df.endTime.iloc[-1] == float(event.attrib['time']):
+                    refuel_df.fuelAfterCharging.iloc[-1] = float(event.attrib['primaryFuelLevel'])
+            elif event_type == 'ParkEvent':
+                parking_df = parking_df.append({
+                    'time': float(event.attrib['time']),
+                    'vehicle': int(event.attrib['vehicle']),
+                    'parkingTaz': int(event.attrib['parkingTaz']),
+                    'locX': float(event.attrib['locationX']),
+                    'locY': float(event.attrib['locationY'])
+                }, ignore_index=True)
 
-    return df
+    return refuel_df, parking_df
 
 
 def parse_event_xml_to_pandas_dataframe_float_time(input_filename, tree = None, ignore_body_vehicles=True):
