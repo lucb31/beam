@@ -2,7 +2,10 @@ package ftm.charging
 
 object NonlinearChargingModel {
   def calcChargingPower(currentEnergyLevelInJoule: Double, batteryCapacityInJoule: Double, maxChargingPowerInKw: Double): Double = {
-    (0.6 * Math.pow(0.05, currentEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
+    if (currentEnergyLevelInJoule > 0.0)
+      (0.6 * Math.pow(0.05, currentEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
+    else
+      maxChargingPowerInKw
   }
 
   def calcAvgChargingPowerNumeric(currentEnergyLevelInJoule: Double, batteryCapacityInJoule: Double, maxChargingPowerInKw: Double, chargingLimits: (Double, Double), stepSize: Int = 10): Double = {
