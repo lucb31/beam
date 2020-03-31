@@ -52,6 +52,7 @@ class BeamVehicle(
 
   var primaryFuelLevelInJoules = beamVehicleType.primaryFuelCapacityInJoule
   var secondaryFuelLevelInJoules = beamVehicleType.secondaryFuelCapacityInJoule.getOrElse(0.0)
+  var minPrimaryFuelLevelInJoules = beamVehicleType.primaryFuelCapacityInJoule
 
   var mustBeDrivenHome: Boolean = false
 
@@ -222,6 +223,7 @@ class BeamVehicle(
       }
     }
     primaryFuelLevelInJoules = primaryFuelLevelInJoules - primaryEnergyConsumed
+    if (primaryFuelLevelInJoules < minPrimaryFuelLevelInJoules) minPrimaryFuelLevelInJoules = primaryFuelLevelInJoules
 
     // Log calculated energy for debugging and plotting
     if (beamLeg.mode.value == "car") {

@@ -70,20 +70,24 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
   }
 
   def calculateEndOfDaySOC (trips: ListBuffer[EmbodiedBeamTrip]) : (Double, Double) = {
-    var lastSoc = 0.0
-    var minSoc = 1.0
-    trips.foreach { trip =>
-      trip.legs.foreach { leg =>
-        if (leg.beamLeg.mode.value == "car") {
-          val vehicle = this.beamServices.beamScenario.privateVehicles.get(leg.beamVehicleId).get
-          val soc = vehicle.primaryFuelLevelInJoules / vehicle.beamVehicleType.primaryFuelCapacityInJoule
-          if (soc < minSoc)  minSoc = soc
-          lastSoc = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt) / vehicle.beamVehicleType.primaryFuelCapacityInJoule
-        }
+    if (trips.size > 0) {
+      val filteredLegs = trips.last.legs.filter(_.beamLeg.mode.value == "car")
+      if (filteredLegs.size > 0) {
+        val vehicleId = filteredLegs.last.beamVehicleId
+        val vehicle = this.beamServices.beamScenario.privateVehicles.get(vehicleId).get
+        val lastSoc = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt) / vehicle.beamVehicleType.primaryFuelCapacityInJoule
+        val minSoc = vehicle.minPrimaryFuelLevelInJoules / vehicle.beamVehicleType.primaryFuelCapacityInJoule
+
+        (lastSoc, minSoc)
       }
+      else (0, 0)   // Something went wrong
+
+    }
+    else {
+      // Something went wrong here
+      (0, 0)
     }
 
-    (lastSoc, minSoc)
   }
 
 }
