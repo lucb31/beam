@@ -161,18 +161,6 @@ def filter_events(input_filename, vehicle_ids, output_filename=None):
     return tree
 
 
-def seconds_to_time_string(seconds):
-    hour = int(seconds / 3600)
-    minute = int((seconds - hour * 3600) / 60)
-    string = ""
-    if hour < 10:
-        string += "0"
-    string += str(hour) + ":"
-    if minute < 10:
-        string += "0"
-    string += str(minute)
-    return string
-
 # specify a date to use for the times
 zero = datetime.datetime(2019,12,19)
 
