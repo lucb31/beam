@@ -5,8 +5,7 @@ from plotly.subplots import make_subplots
 from random import randrange
 
 from python.ftm.filter_plans import filter_plans_by_vehicle_id
-from python.ftm.plot_events import get_refuel_and_parking_events_from_event_xml, filter_events, \
-    parse_event_xml_to_pandas_dataframe_float_time, get_driving_events_from_events_csv, \
+from python.ftm.plot_events import get_driving_events_from_events_csv, \
     get_walking_events_from_events_csv, get_parking_events_from_events_csv, get_all_events_from_events_csv, \
     get_refuel_events_from_events_csv, get_charging_events_from_events_csv
 from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, seconds_to_time_string
@@ -258,7 +257,7 @@ def print_refuel_events_for_taz(taz_ids, df_events):
         filtered_df = df_events[df_events.parkingTaz == taz]
         if len(filtered_df.index) > 0:
             print("Refuel events for TAZ", taz)
-            print(filtered_df[['vehicle', 'parkingTaz', 'locX', 'locY', 'fuel']].head(5))
+            print(filtered_df[['vehicle', 'parkingTaz', 'locationX', 'locationY', 'fuel']].head(5))
         else:
             print("No Refuel events for TAZ", taz)
 
@@ -268,7 +267,7 @@ def print_parking_events_for_taz(taz_ids, parking_df):
         filtered_df = parking_df[parking_df.parkingTaz == taz]
         if len(filtered_df.index) > 0:
             print("5 Parking events for TAZ", taz)
-            print(filtered_df[['vehicle', 'parkingTaz', 'locX', 'locY']].head(5))
+            print(filtered_df[['vehicle', 'parkingTaz', 'locationX', 'locationY']].head(5))
         else:
             print("No Parking events for TAZ", taz)
 
@@ -368,7 +367,7 @@ for iteration in range(last_iteration + 1):
 
         print("Driving events\n", df_driving_events[['type', 'departureTime', 'arrivalTime', 'primaryFuelLevel', 'parkingTaz']].head(20))
         print("Walking events\n", df_walking_events[['type', 'departureTime', 'arrivalTime', 'length']].head(20))
-        print("Parking events\n", df_parking_events[['parkingTaz', 'time', 'locX', 'locY']].head(20))
+        print("Parking events\n", df_parking_events[['parkingTaz', 'time', 'locationX', 'locationY']].head(20))
         #print("All events \n")
 
         events_plot_df = pd.DataFrame({

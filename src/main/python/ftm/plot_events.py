@@ -80,7 +80,6 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
     if df is None:
         df = get_all_events_from_events_csv(path_to_events_csv)
     df_refuel = df[df['type'] == "RefuelSessionEvent"]
-    df_refuel = df_refuel[['time', 'vehicle', 'fuel', 'duration', 'parkingTaz', 'locationX', 'locationY']]
     df_refuel = df_refuel.reset_index(drop=True)
     df_refuel = df_refuel.assign(fuelAfterCharging=pd.Series(np.zeros(len(df_refuel.index))))
 
@@ -89,8 +88,7 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
     for fuelAfterCharging, time, vehicle in zip(df_plug_out['primaryFuelLevel'], df_plug_out['time'],  df_plug_out['vehicle']):
         df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
 
-    df_refuel = df_refuel.rename(columns={'time': 'endTime', 'locationX': 'locX', 'locationY': 'locY'})
-
+    df_refuel = df_refuel.rename(columns={'time': 'endTime'})
     return df_columns_to_numeric(df_refuel, ['vehicle', 'fuel'])
 
 
@@ -98,8 +96,6 @@ def get_parking_events_from_events_csv(path_to_events_csv="", df=None):
     if df is None:
         df = get_all_events_from_events_csv(path_to_events_csv)
     df_parking = df[df['type'] == "ParkEvent"]
-    df_parking = df_parking[['time', 'vehicle', 'parkingTaz', 'locationX', 'locationY']]
-    df_parking = df_parking.rename(columns={'locationX': 'locX', 'locationY': 'locY'})
     df_parking = df_parking.reset_index(drop=True)
     return df_parking
 
