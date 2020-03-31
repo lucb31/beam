@@ -5,6 +5,7 @@ import matplotlib.dates as mdates
 import datetime
 import tikzplotlib
 import numpy as np
+from os import path
 
 from python.ftm.util import seconds_to_time_string
 
@@ -71,8 +72,13 @@ def get_refuel_and_parking_events_from_event_xml(input_filename):
     return refuel_df, parking_df
 
 
-def get_refuel_events_from_event_csv(path_to_events_csv):
-    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+def get_all_events_from_events_csv(path_to_events_csv):
+    assert path.exists(path_to_events_csv)
+    return pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+
+def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
+    if df is None:
+        df = get_all_events_from_events_csv(path_to_events_csv)
     df_refuel = df[df['type'] == "RefuelSessionEvent"]
     df_refuel = df_refuel[['time', 'vehicle', 'fuel', 'duration', 'parkingTaz', 'locationX', 'locationY']]
     df_refuel = df_refuel.reset_index(drop=True)
@@ -84,11 +90,13 @@ def get_refuel_events_from_event_csv(path_to_events_csv):
         df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
 
     df_refuel = df_refuel.rename(columns={'time': 'endTime', 'locationX': 'locX', 'locationY': 'locY'})
-    return df_refuel
+
+    return df_columns_to_numeric(df_refuel, ['vehicle', 'fuel'])
 
 
-def get_parking_events_from_event_csv(path_to_events_csv):
-    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+def get_parking_events_from_events_csv(path_to_events_csv="", df=None):
+    if df is None:
+        df = get_all_events_from_events_csv(path_to_events_csv)
     df_parking = df[df['type'] == "ParkEvent"]
     df_parking = df_parking[['time', 'vehicle', 'parkingTaz', 'locationX', 'locationY']]
     df_parking = df_parking.rename(columns={'locationX': 'locX', 'locationY': 'locY'})
@@ -96,27 +104,41 @@ def get_parking_events_from_event_csv(path_to_events_csv):
     return df_parking
 
 
-def get_events_with_fuel_level_from_events_csv(path_to_events_csv):
-    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+def get_events_with_fuel_level_from_events_csv(path_to_events_csv="", df=None):
+    if df is None:
+        df = get_all_events_from_events_csv(path_to_events_csv)
     df_events = df[df['primaryFuelLevel'].notnull()]
     df_events = df_events.reset_index(drop=True)
     return df_events
 
 
-def get_driving_events_from_events_csv(path_to_events_csv):
-    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+def get_driving_events_from_events_csv(path_to_events_csv="", df=None):
+    if df is None:
+        df = get_all_events_from_events_csv(path_to_events_csv)
     df_events = df[df['mode'].eq("car") & df['vehicle'].notnull()]
-    df_events[['vehicle', 'driver']] = df_events[['vehicle', 'driver']].apply(pd.to_numeric)
     df_events = df_events.reset_index(drop=True)
-    return df_events
+    return df_columns_to_numeric(df_events, ['vehicle', 'driver', 'primaryFuelLevel'])
 
 
-def get_walking_events_from_events_csv(path_to_events_csv):
-    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+def get_walking_events_from_events_csv(path_to_events_csv="", df=None):
+    if df is None:
+        df = get_all_events_from_events_csv(path_to_events_csv)
     df_events = df[df['mode'].eq("walk") & df['vehicle'].notnull()]
-    df_events[['driver']] = df_events[['driver']].apply(pd.to_numeric)
     df_events = df_events.reset_index(drop=True)
-    return df_events
+    return df_columns_to_numeric(df_events, ['driver'])
+
+
+def get_charging_events_from_events_csv(path_to_events_csv="", df=None):
+    if df is None:
+        df = get_all_events_from_events_csv(path_to_events_csv)
+    df_events = df[df['type'].eq("ChargingPlugInEvent") | df['type'].eq("ChargingPlugOutEvent")]
+    df_events = df_events.reset_index(drop=True)
+    return df_columns_to_numeric(df_events, ['vehicle', 'driver', 'primaryFuelLevel'])
+
+
+def df_columns_to_numeric(df, columns):
+    df[columns] = df[columns].apply(pd.to_numeric)
+    return df
 
 
 def parse_event_xml_to_pandas_dataframe_float_time(input_filename, tree=None, ignore_body_vehicles=True):
