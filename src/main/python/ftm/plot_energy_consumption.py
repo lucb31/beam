@@ -302,6 +302,7 @@ if plotly_stacked_layout:
 for iteration in range(last_iteration + 1):
     # Setup working directory and plot configuration
     working_dir = get_iteration_dir(run_dir, iteration)
+    path_to_events_csv = working_dir + "events.csv"
     print("-------------- ITERATION", iteration, "--------------------")
     print("Working on path: ", working_dir)
     plot_row = int(iteration / 2) + 1        # Grid layout
@@ -319,8 +320,9 @@ for iteration in range(last_iteration + 1):
     df_consumption_per_link = df_consumption_per_link[df_consumption_per_link.vehicleId == vehicle_id]
 
     # Get refueling data
-    df_refueling_events, df_events_parking = get_refuel_and_parking_events_from_event_xml(working_dir + "events.xml")
-    df_refueling_events = df_refueling_events[df_refueling_events.vehicle == vehicleId]
+    df_events_csv = get_all_events_from_events_csv(path_to_events_csv)
+    df_refueling_events = get_refuel_events_from_events_csv(df=df_events_csv)
+    df_refueling_events = df_refueling_events[df_refueling_events.vehicle.eq(vehicle_id)]
 
     print("Plotting energy consumption for vehicle with the id", vehicle_id, "of the provided csv data")
     if len(df_consumption_per_trip.index) > 0:
@@ -352,23 +354,33 @@ for iteration in range(last_iteration + 1):
         ax_separate[int(iteration / 2)][iteration % 2].grid()
         ax.scatter(plot_df.xval, plot_df.yval, label='Iteration ' + str(iteration))
 
+        # Parse events from csv
+        # TODO Check for PlugInEvents w/o PlugOut
+        df_driving_events = get_driving_events_from_events_csv(df=df_events_csv)
+        df_driving_events = df_driving_events[df_driving_events['vehicle'] == vehicle_id]
+        df_walking_events = get_walking_events_from_events_csv(df=df_events_csv)
+        df_walking_events = df_walking_events[df_walking_events['driver'].eq(df_driving_events['driver'].iloc[0])]
+        df_parking_events = get_parking_events_from_events_csv(df=df_events_csv)
+        df_parking_events = df_parking_events[df_parking_events['vehicle'] == vehicle_id]
+        df_parking_events.time = [seconds_to_time_string(time[0]) for (time) in zip(df_parking_events['time'])]
+        df_charging_events = get_charging_events_from_events_csv(df=df_events_csv)
+        df_charging_events = df_charging_events[df_charging_events['vehicle'] == vehicle_id]
 
-        # Plot xml data
-        path_to_events_xml = working_dir + "events.xml"
-        tree = filter_events(path_to_events_xml, [vehicleId])
-        df_events = parse_event_xml_to_pandas_dataframe_float_time(path_to_events_xml, tree)
-
-        print("Driving events\n", df_events[['eventType', 'departureTime', 'arrivalTime', 'fuel', 'parkingTaz']].head(20))
-        # DEBUG: with body vehicle events
-        df_walking_events = parse_event_xml_to_pandas_dataframe_float_time(path_to_events_xml, filter_events(path_to_events_xml, ['body-'+str(df_events['person'].iloc[0])]), False)
-        print("Walking events\n", df_walking_events[['eventType', 'departureTime', 'arrivalTime', 'length']].head(20))
-        print(ET.tostring(filter_events(path_to_events_xml, [vehicleId, 'body-'+str(df_events['person'].iloc[0])]).getroot()).decode('utf-8'))
+        print("Driving events\n", df_driving_events[['type', 'departureTime', 'arrivalTime', 'primaryFuelLevel', 'parkingTaz']].head(20))
+        print("Walking events\n", df_walking_events[['type', 'departureTime', 'arrivalTime', 'length']].head(20))
+        print("Parking events\n", df_parking_events[['parkingTaz', 'time', 'locX', 'locY']].head(20))
+        #print("All events \n")
 
         events_plot_df = pd.DataFrame({
-            'xval': df_events.time / 3600,
-            'yval': df_events.fuel,
-            'info': [concat_event_info_string(x, y, event_type, taz) for x, y, event_type, taz in zip(df_events.time / 3600, df_events.fuel, df_events.eventType, df_events.parkingTaz)]
+            'xval': df_driving_events.time / 3600,
+            'yval': df_driving_events.primaryFuelLevel / 3.6e6,
+            'info': [concat_event_info_string(x, y, event_type, taz) for x, y, event_type, taz in zip(df_driving_events.time / 3600, df_driving_events.primaryFuelLevel / 3.6e6, df_driving_events.type, df_driving_events.parkingTaz)]
         })
+        events_plot_df = events_plot_df.append(pd.DataFrame({
+            'xval': df_charging_events.time / 3600,
+            'yval': df_charging_events.primaryFuelLevel / 3.6e6,
+            'info': [concat_event_info_string(x, y, event_type, taz) for x, y, event_type, taz in zip(df_charging_events.time / 3600, df_charging_events.primaryFuelLevel / 3.6e6, df_charging_events.type, df_charging_events.parkingTaz)]
+        }))
         events_plot_df = events_plot_df.sort_values(by=['xval'])
         ax_separate_events[int(iteration / 2)][iteration % 2].plot(events_plot_df.xval, events_plot_df.yval)
         ax_separate_events[int(iteration / 2)][iteration % 2].scatter(events_plot_df.xval, events_plot_df.yval)
