@@ -76,6 +76,7 @@ def get_all_events_from_events_csv(path_to_events_csv):
     assert path.exists(path_to_events_csv)
     return pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
 
+
 def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
     if df is None:
         df = get_all_events_from_events_csv(path_to_events_csv)
@@ -88,7 +89,6 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
     for fuelAfterCharging, time, vehicle in zip(df_plug_out['primaryFuelLevel'], df_plug_out['time'],  df_plug_out['vehicle']):
         df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
 
-    df_refuel = df_refuel.rename(columns={'time': 'endTime'})
     return df_columns_to_numeric(df_refuel, ['vehicle', 'fuel'])
 
 

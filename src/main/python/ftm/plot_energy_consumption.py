@@ -120,7 +120,7 @@ def plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_
                 ax.plot(xvals, yvals, label='Trip starting at ' + seconds_to_time_string(name))
 
             # plot preceding refuel events
-            filteredRefuelDf = df_refueling_events[df_refueling_events.endTime == startTime]
+            filteredRefuelDf = df_refueling_events[df_refueling_events.time == startTime]
             if len(filteredRefuelDf.index) > 0 and filteredRefuelDf.iloc[0].duration > 0:
                 xvals = pd.Series()
                 yvals = pd.Series()
@@ -135,8 +135,8 @@ def plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_
                         yvals = yvals.append(pd.Series([previous_trip_df.iloc[0].primaryFuelLevelAfterLeg / 3.6e6]), ignore_index=True)
 
                 xvals = xvals.append(pd.Series([
-                    float(filteredRefuelDf.endTime.iloc[0]) - filteredRefuelDf.duration.iloc[0],
-                    float(filteredRefuelDf.endTime.iloc[0])]) / 3600, ignore_index=True)
+                    float(filteredRefuelDf.time.iloc[0]) - filteredRefuelDf.duration.iloc[0],
+                    float(filteredRefuelDf.time.iloc[0])]) / 3600, ignore_index=True)
                 yvals = yvals.append(pd.Series([
                     filteredRefuelDf.fuelAfterCharging.iloc[0] - filteredRefuelDf.fuel.iloc[0],
                     filteredRefuelDf.fuelAfterCharging.iloc[0]]) / 3.6e6, ignore_index=True)
@@ -150,7 +150,7 @@ def plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_
 
     # plot refueling at end of day events
     maxLegStartTime = df_consumption_per_trip['legStartTime'].max()
-    filteredRefuelDf = df_refueling_events[df_refueling_events.endTime > maxLegStartTime]
+    filteredRefuelDf = df_refueling_events[df_refueling_events.time > maxLegStartTime]
     if len(filteredRefuelDf) > 0 and filteredRefuelDf.iloc[0].duration > 0:
         xvals = pd.Series()
         yvals = pd.Series()
