@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import datetime
 import tikzplotlib
+import numpy as np
+
+from python.ftm.util import seconds_to_time_string
 
 
 def get_persons_to_vehicle_df(input_filename):
@@ -53,10 +56,14 @@ def get_refuel_and_parking_events_from_event_xml(input_filename):
                 if refuel_df.endTime.iloc[-1] == float(event.attrib['time']):
                     refuel_df.fuelAfterCharging.iloc[-1] = float(event.attrib['primaryFuelLevel'])
             elif event_type == 'ParkEvent':
+                try:
+                    parking_taz = int(event.attrib['parkingTaz'])
+                except ValueError as ex:
+                    parking_taz = -1
                 parking_df = parking_df.append({
                     'time': float(event.attrib['time']),
                     'vehicle': int(event.attrib['vehicle']),
-                    'parkingTaz': int(event.attrib['parkingTaz']),
+                    'parkingTaz': parking_taz,
                     'locX': float(event.attrib['locationX']),
                     'locY': float(event.attrib['locationY'])
                 }, ignore_index=True)
@@ -64,7 +71,55 @@ def get_refuel_and_parking_events_from_event_xml(input_filename):
     return refuel_df, parking_df
 
 
-def parse_event_xml_to_pandas_dataframe_float_time(input_filename, tree = None, ignore_body_vehicles=True):
+def get_refuel_events_from_event_csv(path_to_events_csv):
+    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+    df_refuel = df[df['type'] == "RefuelSessionEvent"]
+    df_refuel = df_refuel[['time', 'vehicle', 'fuel', 'duration', 'parkingTaz', 'locationX', 'locationY']]
+    df_refuel = df_refuel.reset_index(drop=True)
+    df_refuel = df_refuel.assign(fuelAfterCharging=pd.Series(np.zeros(len(df_refuel.index))))
+
+    # Get fuel after charging
+    df_plug_out = df[df['type'] == "ChargingPlugOutEvent"]
+    for fuelAfterCharging, time, vehicle in zip(df_plug_out['primaryFuelLevel'], df_plug_out['time'],  df_plug_out['vehicle']):
+        df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
+
+    df_refuel = df_refuel.rename(columns={'time': 'endTime', 'locationX': 'locX', 'locationY': 'locY'})
+    return df_refuel
+
+
+def get_parking_events_from_event_csv(path_to_events_csv):
+    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+    df_parking = df[df['type'] == "ParkEvent"]
+    df_parking = df_parking[['time', 'vehicle', 'parkingTaz', 'locationX', 'locationY']]
+    df_parking = df_parking.rename(columns={'locationX': 'locX', 'locationY': 'locY'})
+    df_parking = df_parking.reset_index(drop=True)
+    return df_parking
+
+
+def get_events_with_fuel_level_from_events_csv(path_to_events_csv):
+    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+    df_events = df[df['primaryFuelLevel'].notnull()]
+    df_events = df_events.reset_index(drop=True)
+    return df_events
+
+
+def get_driving_events_from_events_csv(path_to_events_csv):
+    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+    df_events = df[df['mode'].eq("car") & df['vehicle'].notnull()]
+    df_events[['vehicle', 'driver']] = df_events[['vehicle', 'driver']].apply(pd.to_numeric)
+    df_events = df_events.reset_index(drop=True)
+    return df_events
+
+
+def get_walking_events_from_events_csv(path_to_events_csv):
+    df = pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
+    df_events = df[df['mode'].eq("walk") & df['vehicle'].notnull()]
+    df_events[['driver']] = df_events[['driver']].apply(pd.to_numeric)
+    df_events = df_events.reset_index(drop=True)
+    return df_events
+
+
+def parse_event_xml_to_pandas_dataframe_float_time(input_filename, tree=None, ignore_body_vehicles=True):
     if tree is None:
         tree = ET.parse(input_filename)
     root = tree.getroot()
