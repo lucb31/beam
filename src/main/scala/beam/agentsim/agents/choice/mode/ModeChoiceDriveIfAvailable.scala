@@ -54,15 +54,10 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
       calculateTripWalkingDistanceInM(_)
     ).sum
 
-    val experiencedPlan = person.getSelectedPlan
     val (endSoc, minSoc) = calculateEndOfDaySOC(trips)
-    experiencedPlan.getAttributes.putAttribute("endOfDaySoc", endSoc)
-    experiencedPlan.getAttributes.putAttribute("minSoc", minSoc)
-    experiencedPlan.getAttributes.putAttribute("walkingDistanceInM", walkingDistanceInM)
-
-    person.asInstanceOf[Person].addPlan(experiencedPlan)
-    person.removePlan(person.getSelectedPlan)
-    person.asInstanceOf[Person].setSelectedPlan(experiencedPlan)
+    person.getSelectedPlan.getAttributes.putAttribute("endOfDaySoc", endSoc)
+    person.getSelectedPlan.getAttributes.putAttribute("minSoc", minSoc)
+    person.getSelectedPlan.getAttributes.putAttribute("walkingDistanceInM", walkingDistanceInM)
 
     walkingDistanceInM
   }

@@ -185,6 +185,7 @@ trait BeamHelper extends LazyLogging {
           addPlanStrategyBinding("SelectExpBeta").to(classOf[BeamExpBeta])
           addPlanStrategyBinding("SwitchModalityStyle").to(classOf[SwitchModalityStyle])
           addPlanStrategyBinding("SwitchChargingPreferences").to(classOf[SwitchChargingPreferences])
+          addPlanStrategyBinding("SwitchChargingPreferencesRandomizedOrder").to(classOf[SwitchChargingPreferencesRandomizedOrder])
           addPlanStrategyBinding("ClearRoutes").to(classOf[ClearRoutes])
           addPlanStrategyBinding("ClearModes").to(classOf[ClearModes])
           addPlanStrategyBinding("TimeMutator").to(classOf[BeamTimeMutator])
