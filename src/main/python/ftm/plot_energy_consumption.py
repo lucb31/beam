@@ -75,22 +75,22 @@ def plotConsumptionOverDuration(df, plotSpeedBasedConsumption, plotLengthBasedCo
     plt.show()
 
 
-def plotTripConsumptionOverDuration(df, socDf, refuelDf, plot_separate, max_hour = 36):
-    linkDurations = df['linkLength'] / df['linkAvgSpeed']
+def plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_trip, df_refueling_events, plot_separate, max_hour = 36):
+    linkDurations = df_consumption_per_link['linkLength'] / df_consumption_per_link['linkAvgSpeed']
     xlabel = 'Time of day in h'
     ylabel = 'Current SOC in kWh'
-    title = 'SOC during one day: Vehicle ' + str(df['vehicleId'].iloc[0])
+    title = 'SOC during one day: Vehicle ' + str(df_consumption_per_link['vehicleId'].iloc[0])
     markerSize = 10
     plot_sub_trips = False
 
     # Divide data into trips
-    trips = df.groupby('legStartTime')
-    print("found", trips.ngroups, "different trips and ", len(refuelDf.index), " refuel events")
+    trips = df_consumption_per_link.groupby('legStartTime')
+    print("found", trips.ngroups, "different trips and ", len(df_refueling_events.index), " refuel events")
     if plot_sub_trips:
         fig, ax = plt.subplots()
 
     # starting soc
-    first_trip = socDf[socDf['legStartTime'] == socDf.legStartTime.min()]
+    first_trip = df_consumption_per_trip[df_consumption_per_trip['legStartTime'] == df_consumption_per_trip.legStartTime.min()]
     xvals_sum = pd.Series([0])
     yvals_sum = pd.Series([first_trip.primaryFuelLevelAfterLeg.iloc[0] + first_trip.primaryEnergyConsumedInJoule.iloc[0]]) / 3.6e6
 
@@ -98,7 +98,7 @@ def plotTripConsumptionOverDuration(df, socDf, refuelDf, plot_separate, max_hour
         fig, ax = plt.subplots(2, 2)
     plotted_trips = 0
     for name, trip in trips:
-        socRow = socDf[socDf['legStartTime'] == trip['legStartTime'].iloc[0]]
+        socRow = df_consumption_per_trip[df_consumption_per_trip['legStartTime'] == trip['legStartTime'].iloc[0]]
         current_soc_in_kwh = (socRow.primaryFuelLevelAfterLeg.iloc[0] + socRow.primaryEnergyConsumedInJoule.iloc[
             0]) / 3.6e6
         linkConsumptions = trip['energyConsumedInJoule'].values / 3.6e6
@@ -124,13 +124,13 @@ def plotTripConsumptionOverDuration(df, socDf, refuelDf, plot_separate, max_hour
                 ax.plot(xvals, yvals, label='Trip starting at ' + seconds_to_time_string(name))
 
             # plot preceding refuel events
-            filteredRefuelDf = refuelDf[refuelDf.endTime == startTime]
+            filteredRefuelDf = df_refueling_events[df_refueling_events.endTime == startTime]
             if len(filteredRefuelDf.index) > 0 and filteredRefuelDf.iloc[0].duration > 0:
                 xvals = pd.Series()
                 yvals = pd.Series()
                 if plot_sub_trips:
                     # plot additional connecting line (optional)
-                    precedingTripsDf = socDf[socDf['legStartTime'] < trip['legStartTime'].iloc[0]]
+                    precedingTripsDf = df_consumption_per_trip[df_consumption_per_trip['legStartTime'] < trip['legStartTime'].iloc[0]]
                     previous_trip_df = precedingTripsDf[
                         precedingTripsDf.legStartTime == precedingTripsDf['legStartTime'].max()]
                     if len(previous_trip_df.index) > 0:
@@ -153,14 +153,14 @@ def plotTripConsumptionOverDuration(df, socDf, refuelDf, plot_separate, max_hour
         plotted_trips += 1
 
     # plot refueling at end of day events
-    maxLegStartTime = socDf['legStartTime'].max()
-    filteredRefuelDf = refuelDf[refuelDf.endTime > maxLegStartTime]
+    maxLegStartTime = df_consumption_per_trip['legStartTime'].max()
+    filteredRefuelDf = df_refueling_events[df_refueling_events.endTime > maxLegStartTime]
     if len(filteredRefuelDf) > 0 and filteredRefuelDf.iloc[0].duration > 0:
         xvals = pd.Series()
         yvals = pd.Series()
         if plot_sub_trips:
             # plot additional connecting line (optional)
-            previous_trip_df = socDf[socDf.legStartTime == maxLegStartTime]
+            previous_trip_df = df_consumption_per_trip[df_consumption_per_trip.legStartTime == maxLegStartTime]
             xvals = xvals.append(pd.Series([previous_trip_df.iloc[0].legStartTime + previous_trip_df.iloc[0].legDuration]), ignore_index=True)
             yvals = yvals.append(pd.Series([previous_trip_df.iloc[0].primaryFuelLevelAfterLeg / 3.6e6]), ignore_index=True)
 
@@ -308,6 +308,12 @@ for iteration in range(last_iteration + 1):
     working_dir = get_iteration_dir(run_dir, iteration)
     print("-------------- ITERATION", iteration, "--------------------")
     print("Working on path: ", working_dir)
+    # Setup plots
+    row = int(iteration / 2) + 1        # Grid layout
+    col = iteration % 2 + 1             # Grid layout
+    if plotly_stacked_layout:
+        row = iteration + 1             # Stacked layout
+        col = 1                         # Stacked layout
 
     # Read and filter consumption data from csv data
     df_consumption_per_trip = pd.read_csv(working_dir + "vehConsumptionPerTrip.csv")
@@ -318,21 +324,13 @@ for iteration in range(last_iteration + 1):
     df_consumption_per_link = df_consumption_per_link[df_consumption_per_link.vehicleId == vehicleId]
 
     # Get refueling data
-    df_events_refueling, df_events_parking = get_refuel_and_parking_events_from_event_xml(working_dir + "events.xml")
-    print_refuel_events_for_taz([1.0, 100.0])  # Debug: Print refuel events for specific TAZs
-    print_parking_events_for_taz([1.0, 105.0, 203.0], df_events_parking)  # Debug: Print parking events for specific TAZs
-    df_events_refueling = df_events_refueling[df_events_refueling.vehicle == vehicleId]
+    df_refueling_events, df_events_parking = get_refuel_and_parking_events_from_event_xml(working_dir + "events.xml")
+    df_refueling_events = df_refueling_events[df_refueling_events.vehicle == vehicleId]
 
-    # Plot setup
-    row = int(iteration / 2) + 1    # Grid layout
-    col = iteration % 2 + 1         # Grid layout
-    if plotly_stacked_layout:
-        row = iteration + 1             # Stacked layout
-        col = 1                         # Stacked layout
     print("Plotting energy consumption for vehicle with the id", vehicleId, "of the provided csv data")
     if len(df_consumption_per_trip.index) > 0:
         # Plot data from link consumption
-        xvals, yvals = plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_trip, df_events_refueling, False, 24)
+        xvals, yvals = plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_trip, df_refueling_events, False, 24)
         plot_df = pd.DataFrame({
             'xval': xvals,
             'yval': yvals,
