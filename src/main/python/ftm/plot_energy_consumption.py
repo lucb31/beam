@@ -1,18 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
-import scandir
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from random import randrange
-import xml.etree.ElementTree as ET
-
 
 from python.ftm.filter_plans import filter_plans_by_vehicle_id
-from python.ftm.plot_events import get_refuel_and_parking_events_from_event_xml, filter_events, parse_event_xml_to_pandas_dataframe_float_time, \
-    seconds_to_time_string
-
-from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir
+from python.ftm.plot_events import get_refuel_and_parking_events_from_event_xml, filter_events, \
+    parse_event_xml_to_pandas_dataframe_float_time, get_driving_events_from_events_csv, \
+    get_walking_events_from_events_csv, get_parking_events_from_events_csv, get_all_events_from_events_csv, \
+    get_refuel_events_from_events_csv, get_charging_events_from_events_csv
+from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, seconds_to_time_string
 
 
 def plotConsumptionOverLength(df, plotSpeedBasedConsumption, plotLengthBasedConsumption):
@@ -247,7 +244,7 @@ def printTripsSummary(df):
 def concat_event_info_string(x, y, event_type, taz):
     info_string = concat_trip_info_string(x, y) + "<br>"
     if taz > 0:
-        return info_string +  str(event_type) + " (TAZ " + str(int(taz)) + ")"
+        return info_string + str(event_type) + " (TAZ " + str(int(taz)) + ")"
     else:
         return info_string + str(event_type)
 
@@ -256,9 +253,9 @@ def concat_trip_info_string(x, y):
     return seconds_to_time_string(x*3600) + ": " + ("%.2f" % y) + "kWh"
 
 
-def print_refuel_events_for_taz(taz_ids):
+def print_refuel_events_for_taz(taz_ids, df_events):
     for taz in taz_ids:
-        filtered_df = df_events_refueling[df_events_refueling.parkingTaz == taz]
+        filtered_df = df_events[df_events.parkingTaz == taz]
         if len(filtered_df.index) > 0:
             print("Refuel events for TAZ", taz)
             print(filtered_df[['vehicle', 'parkingTaz', 'locX', 'locY', 'fuel']].head(5))
@@ -279,14 +276,13 @@ def print_parking_events_for_taz(taz_ids, parking_df):
 
 pd.set_option('display.max_columns', 500)
 baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
-run_dir = get_run_dir(baseDir)
 latest_run = get_latest_run(baseDir)
 #run_dir = "/home/lucas/IdeaProjects/beam/output/munich-simple/munich-simple__2020-03-23_11-24-47/"
 #run_dir = "/home/lucas/IdeaProjects/beam/output/munich-simple/munich-simple__2020-03-24_09-15-22/"
 vehicleId = 38   #38
 last_iteration = 3
-num_rows = int(last_iteration / 2) + 1
-num_cols = last_iteration % 2 + 1
+num_plot_rows = int(last_iteration / 2) + 1
+num_plot_cols = last_iteration % 2 + 1
 
 # Plot setup
 xlabel = 'Time of day in h'
@@ -296,38 +292,37 @@ plotly_stacked_layout = True
 
 # Initialize plot figures
 fig, ax = plt.subplots()
-fig_separate, ax_separate = plt.subplots(num_rows, num_cols)
-fig_separate_events, ax_separate_events = plt.subplots(num_rows, num_cols)
-plotly_figure = make_subplots(rows=num_rows, cols=num_cols, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"))
+fig_separate, ax_separate = plt.subplots(num_plot_rows, num_plot_cols)
+fig_separate_events, ax_separate_events = plt.subplots(num_plot_rows, num_plot_cols)
+plotly_figure = make_subplots(rows=num_plot_rows, cols=num_plot_cols, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"))
 if plotly_stacked_layout:
     plotly_figure = make_subplots(rows=last_iteration+1, cols=1, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"), shared_xaxes=True, vertical_spacing=0.02)
 
 # Draw plots for every iteration
 for iteration in range(last_iteration + 1):
-    # Setup directory
+    # Setup working directory and plot configuration
     working_dir = get_iteration_dir(run_dir, iteration)
     print("-------------- ITERATION", iteration, "--------------------")
     print("Working on path: ", working_dir)
-    # Setup plots
-    row = int(iteration / 2) + 1        # Grid layout
-    col = iteration % 2 + 1             # Grid layout
+    plot_row = int(iteration / 2) + 1        # Grid layout
+    plot_col = iteration % 2 + 1             # Grid layout
     if plotly_stacked_layout:
-        row = iteration + 1             # Stacked layout
-        col = 1                         # Stacked layout
+        plot_row = iteration + 1             # Stacked layout
+        plot_col = 1                         # Stacked layout
 
     # Read and filter consumption data from csv data
     df_consumption_per_trip = pd.read_csv(working_dir + "vehConsumptionPerTrip.csv")
     df_consumption_per_link = pd.read_csv(working_dir + "vehConsumptionPerLink.csv")
-    while vehicleId == 0: #or vehicleId > 249:
-        vehicleId = randrange(df_consumption_per_trip.vehicleId.max())
-    df_consumption_per_trip = df_consumption_per_trip[df_consumption_per_trip.vehicleId == vehicleId]
-    df_consumption_per_link = df_consumption_per_link[df_consumption_per_link.vehicleId == vehicleId]
+    while vehicle_id == 0:
+        vehicle_id = randrange(df_consumption_per_trip.vehicleId.max())
+    df_consumption_per_trip = df_consumption_per_trip[df_consumption_per_trip.vehicleId == vehicle_id]
+    df_consumption_per_link = df_consumption_per_link[df_consumption_per_link.vehicleId == vehicle_id]
 
     # Get refueling data
     df_refueling_events, df_events_parking = get_refuel_and_parking_events_from_event_xml(working_dir + "events.xml")
     df_refueling_events = df_refueling_events[df_refueling_events.vehicle == vehicleId]
 
-    print("Plotting energy consumption for vehicle with the id", vehicleId, "of the provided csv data")
+    print("Plotting energy consumption for vehicle with the id", vehicle_id, "of the provided csv data")
     if len(df_consumption_per_trip.index) > 0:
         # Plot data from link consumption
         xvals, yvals = plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_trip, df_refueling_events, False, 24)
@@ -344,8 +339,8 @@ for iteration in range(last_iteration + 1):
                 hovertemplate='%{text}',
                 text=plot_df['info'].values,
             ),
-            row=row,
-            col=col
+            row=plot_row,
+            col=plot_col
         )
 
         ax_separate[int(iteration / 2)][iteration % 2].scatter(plot_df.xval, plot_df.yval, label='Iteration ' + str(iteration))
@@ -393,13 +388,13 @@ for iteration in range(last_iteration + 1):
                 hovertemplate='%{text}',
                 text=events_plot_df['info'].values
             ),
-            row=row,
-            col=col
+            row=plot_row,
+            col=plot_col
         )
     else:
         print("ERR: Empty dataframe on iteration " + str(iteration))
 
-title = "SOC of Vehicle "+str(vehicleId)+" in simulation "+str(latest_run)
+title = "SOC of Vehicle " + str(vehicle_id) + " in simulation " + str(run_dir)
 ax.set_xlabel(xlabel)
 ax.set_ylabel(ylabel)
 ax.set_title(title)
@@ -417,4 +412,4 @@ plotly_figure.show()
 filter_plans_by_vehicle_id(
     "/home/lucas/IdeaProjects/beam/test/input/munich-simple/households.xml",
     get_iteration_dir(run_dir, 3) + "plans.xml.gz",
-    vehicleId)
+    vehicle_id)
