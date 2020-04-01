@@ -12,6 +12,8 @@ def calc_avg_charging_power_numeric(start_energy_in_J, batteryCapacityInJoule, m
     while (updatedEnergyLevelInJoule < chargingLimit):
         currentChargingPowerInKw = (0.6 * 0.05 ** (
                 updatedEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
+        if updatedEnergyLevelInJoule < 0:
+            currentChargingPowerInKw = maxChargingPowerInKw
         stepEnergyInJoule = stepSize * currentChargingPowerInKw * 1000
         currentTimestep += stepSize
         updatedEnergyLevelInJoule += stepEnergyInJoule
