@@ -161,11 +161,11 @@ def plotTripConsumptionOverDuration(df_consumption_per_link, df_consumption_per_
             yvals = yvals.append(pd.Series([previous_trip_df.iloc[0].primaryFuelLevelAfterLeg / 3.6e6]), ignore_index=True)
 
         # Refueling late
-        # xvals = np.append(xvals, [int(filteredRefuelDf.endTime.iloc[0] - filteredRefuelDf.duration.iloc[0]), int(filteredRefuelDf.endTime.iloc[0])]) / 3600
+        # xvals = np.append(xvals, [int(filteredRefuelDf.time.iloc[0] - filteredRefuelDf.duration.iloc[0]), int(filteredRefuelDf.time.iloc[0])]) / 3600
 
         # Refueling as soon as plugged in
-        xvals = xvals.append(pd.Series([float(filteredRefuelDf.endTime.iloc[0]) - filteredRefuelDf.duration.iloc[0],
-                                        float(filteredRefuelDf.endTime.iloc[0])]) / 3600, ignore_index=True)
+        xvals = xvals.append(pd.Series([float(filteredRefuelDf.time.iloc[0]) - filteredRefuelDf.duration.iloc[0],
+                                        float(filteredRefuelDf.time.iloc[0])]) / 3600, ignore_index=True)
 
         yvals = yvals.append(pd.Series([filteredRefuelDf.fuelAfterCharging.iloc[0] - filteredRefuelDf.fuel.iloc[0],
                                         filteredRefuelDf.fuelAfterCharging.iloc[0]]) / 3.6e6, ignore_index=True)
@@ -320,7 +320,7 @@ for iteration in range(last_iteration + 1):
 
     # Get refueling data
     df_events_csv = get_all_events_from_events_csv(path_to_events_csv)
-    df_refueling_events = get_refuel_events_from_events_csv(df=df_events_csv)
+    df_refueling_events = get_refuel_events_from_events_csv(path_to_events_csv, df=df_events_csv)
     df_refueling_events = df_refueling_events[df_refueling_events.vehicle.eq(vehicle_id)]
 
     print("Plotting energy consumption for vehicle with the id", vehicle_id, "of the provided csv data")

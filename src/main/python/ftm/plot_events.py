@@ -7,6 +7,7 @@ import tikzplotlib
 import numpy as np
 from os import path
 
+from python.ftm.charging_power_calculation import calc_avg_charging_power_numeric
 from python.ftm.util import seconds_to_time_string
 
 
@@ -77,9 +78,15 @@ def get_all_events_from_events_csv(path_to_events_csv):
     return pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
 
 
-def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
+def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missing_refuel_events=True):
+    # Check if events already parsed
+    path_to_charging_events_csv = path_to_events_csv.split(".events.")[0] + ".chargingEvents.csv"
+    if path.exists(path_to_charging_events_csv):
+        return df_columns_to_numeric(pd.read_csv(path_to_charging_events_csv, sep=",", index_col=None, header=0), ['vehicle', 'fuel'])
+
     if df is None:
         df = get_all_events_from_events_csv(path_to_events_csv)
+    simulation_end_time = df.time.max()
     df_refuel = df[df['type'] == "RefuelSessionEvent"]
     df_refuel = df_refuel.reset_index(drop=True)
     df_refuel = df_refuel.assign(fuelAfterCharging=pd.Series(np.zeros(len(df_refuel.index))))
@@ -89,6 +96,51 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None):
     for fuelAfterCharging, time, vehicle in zip(df_plug_out['primaryFuelLevel'], df_plug_out['time'],  df_plug_out['vehicle']):
         df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
 
+    # Look for missing PlugOutEvents
+    if add_missing_refuel_events:
+        df_plug_in = df[df['type'] == "ChargingPlugInEvent"]
+        for index, plug_in_event in df_plug_in.iterrows():
+            df_plug_out_filtered_by_vehicle = df_plug_out[df_plug_out.vehicle.eq(plug_in_event['vehicle'])]
+            df_following_plug_out_events = df_plug_out_filtered_by_vehicle.loc[df_plug_out_filtered_by_vehicle.time.astype('int32') > int(plug_in_event['time'])]
+            if len(df_following_plug_out_events.index) == 0:
+                # Add fake refuel session
+                # Calculate charged fuel
+                vehicle_types = df[df.vehicle.eq(plug_in_event.vehicle)]
+                vehicle_type = vehicle_types.loc[vehicle_types['vehicleType'].notnull(), ['vehicleType']].iloc[0].values[0]
+                vehicle_battery_capacity_in_j = df[df.vehicleType.eq(vehicle_type)].primaryFuelLevel.max()   # Todo Unsauber
+                try:
+                    max_charging_power = float(plug_in_event.chargingType.split("|")[0].split("(")[1])    #  Todo
+                except:
+                    max_charging_power = 7.2
+                stepsize = 100
+                charging_power = calc_avg_charging_power_numeric(plug_in_event.primaryFuelLevel, vehicle_battery_capacity_in_j, max_charging_power, vehicle_battery_capacity_in_j, stepsize)
+                max_charging_duration = simulation_end_time - plug_in_event.time
+                charging_duration = (vehicle_battery_capacity_in_j - plug_in_event.primaryFuelLevel) / (charging_power * 1000)
+                charging_duration = min(charging_duration, max_charging_duration)
+                charged_fuel = min(charging_power * charging_duration * 1000, vehicle_battery_capacity_in_j - plug_in_event.primaryFuelLevel)
+                fuel_after_charging = plug_in_event.primaryFuelLevel + charged_fuel
+
+                df_refuel = df_refuel.append({
+                    'time': simulation_end_time,
+                    'type': "RefuelSessionEvent",
+                    'vehicle': plug_in_event.vehicle,
+                    'vehicleType': 0,
+                    'parkingTaz': plug_in_event.parkingTaz,
+                    'chargingType': plug_in_event.chargingType,
+                    'pricingModel': plug_in_event.pricingModel,
+                    'parkingType': plug_in_event.parkingType,
+                    'locationX': plug_in_event.locationX,
+                    'locationY': plug_in_event.locationY,
+                    'price': plug_in_event.price,
+                    'fuel': charged_fuel,
+                    'duration': charging_duration,
+                    'fuelAfterCharging': fuel_after_charging
+                }, ignore_index=True)
+
+    # Save analysis data to csv file
+    if path_to_charging_events_csv != "" and not path.exists(path_to_charging_events_csv):
+        with open(path_to_charging_events_csv, mode='w') as charging_events_file:
+            df_refuel.to_csv(charging_events_file, mode='w', header=True, index=False)
     return df_columns_to_numeric(df_refuel, ['vehicle', 'fuel'])
 
 
