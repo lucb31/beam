@@ -35,8 +35,8 @@ for iteration in range(last_iteration + 1):
     y = pd.Series()
     for parking_taz, df_parking_taz in df_chargers:
         x = x.append(pd.Series(parking_taz))
-        #y = y.append(pd.Series(len(df_parking_taz.index)))
         y = y.append(pd.Series(df_parking_taz.fuel.sum() / 3.6e6))
+
     plotly_figure.add_trace(
         go.Bar(
             x=x,

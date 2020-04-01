@@ -107,9 +107,9 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
                 # Calculate charged fuel
                 vehicle_types = df[df.vehicle.eq(plug_in_event.vehicle)]
                 vehicle_type = vehicle_types.loc[vehicle_types['vehicleType'].notnull(), ['vehicleType']].iloc[0].values[0]
-                vehicle_battery_capacity_in_j = df[df.vehicleType.eq(vehicle_type)].primaryFuelLevel.max()   # Todo Unsauber
+                vehicle_battery_capacity_in_j = df[df.vehicleType.eq(vehicle_type)].primaryFuelLevel.max()
                 try:
-                    max_charging_power = float(plug_in_event.chargingType.split("|")[0].split("(")[1])    #  Todo
+                    max_charging_power = float(plug_in_event.chargingType.split("|")[0].split("(")[1])
                 except:
                     max_charging_power = 7.2
                 stepsize = 100
