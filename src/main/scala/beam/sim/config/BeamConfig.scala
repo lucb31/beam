@@ -2937,15 +2937,36 @@ object BeamConfig {
   case class FTM(
                 keepVehicleSoc: scala.Boolean,
                 chargingCalculationStepSize: scala.Int,
-                chargingCalculationMode: java.lang.String
+                chargingCalculationMode: java.lang.String,
+                scoring: FTM.Scoring
                 )
 
   object FTM {
+    case class Scoring(
+                      endSocWeight: scala.Double,
+                      minSocWeight: scala.Double,
+                      walkingDistanceWeight: scala.Double
+                      )
+
+    object Scoring {
+      def apply(c: com.typesafe.config.Config): BeamConfig.FTM.Scoring = {
+        BeamConfig.FTM.Scoring(
+          endSocWeight = if (c.hasPathOrNull("endSocWeight")) c.getDouble("endSocWeight") else 1,
+          minSocWeight = if (c.hasPathOrNull("minSocWeight")) c.getDouble("minSocWeight") else 1,
+          walkingDistanceWeight = if (c.hasPathOrNull("walkingDistanceWeight")) c.getDouble("walkingDistanceWeight") else 1
+        )
+      }
+    }
+
     def apply(c: com.typesafe.config.Config): BeamConfig.FTM = {
       BeamConfig.FTM(
         keepVehicleSoc = c.hasPathOrNull("keepVehicleSoc") && c.getBoolean("keepVehicleSoc"),  // def: false
         chargingCalculationStepSize = if (c.hasPathOrNull("chargingCalculationStepSize")) c.getInt("chargingCalculationStepSize") else 10,
-        chargingCalculationMode = if (c.hasPathOrNull("chargingCalculationMode")) c.getString("chargingCalculationMode") else "NonLinear"
+        chargingCalculationMode = if (c.hasPathOrNull("chargingCalculationMode")) c.getString("chargingCalculationMode") else "NonLinear",
+        scoring = BeamConfig.FTM.Scoring(
+          if (c.hasPathOrNull("scoring")) c.getConfig("scoring")
+          else com.typesafe.config.ConfigFactory.parseString("scoring{}")
+        )
       )
     }
   }
