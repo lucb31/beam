@@ -198,6 +198,42 @@ class BeamSim @Inject()(
       "vehConsumptionPerLink.csv", beamServices.beamConfig, iterationNumber
     )
 
+    // Generate Dummy activities at the end of the day, if plan ends with home activity
+    beamServices.matsimServices.getScenario.getPopulation.getPersons.values.forEach(person => {
+      val elements = person.getSelectedPlan.getPlanElements
+      val lastActivity = elements.asScala.last.asInstanceOf[Activity]
+      val lastIndex = elements.size() - 1
+      if (lastActivity.getType == "Home") {
+        val dummyActivity = new Activity {
+          var endTime: Double = lastActivity.getStartTime
+          var startTime: Double = lastActivity.getStartTime
+          var activityType: String = "Dummy"
+          var activityLocation: Coord = lastActivity.getCoord
+          var maxDuration: Double = lastActivity.getStartTime
+          var linkId = lastActivity.getLinkId
+          var facilityId = lastActivity.getFacilityId
+          var attributes = lastActivity.getAttributes
+          override def getEndTime: Double = endTime
+          override def setEndTime(seconds: Double): Unit = endTime = seconds
+          override def getType: String = activityType
+          override def setType(`type`: String): Unit = activityType = `type`
+          override def getCoord: Coord = activityLocation
+          override def getStartTime: Double = startTime
+          override def setStartTime(seconds: Double): Unit = startTime = seconds
+          override def getMaximumDuration: Double = maxDuration
+          override def setMaximumDuration(seconds: Double): Unit = maxDuration = seconds
+          override def getLinkId: Id[Link] = linkId
+          override def getFacilityId: Id[ActivityFacility] = facilityId
+          override def setLinkId(id: Id[Link]): Unit = linkId = id
+          override def setFacilityId(id: Id[ActivityFacility]): Unit = facilityId = id
+          override def setCoord(coord: Coord): Unit = activityLocation = coord
+          override def getAttributes: Attributes = attributes
+        }
+        dummyActivity.setCoord(new Coord(lastActivity.getCoord.getX + 1, lastActivity.getCoord.getY))
+        lastActivity.setEndTime(86400 - 60*10)
+        elements.add(dummyActivity)
+      }
+    })
     beamServices.beamScenario.privateVehicles.values.foreach(vehicle => {
       if (beamServices.beamConfig.ftm.keepVehicleSoc) {
         /*
@@ -213,7 +249,6 @@ class BeamSim @Inject()(
       }
       vehicle.currentIteration = iterationNumber
     })
-
 
     val controllerIO = event.getServices.getControlerIO
     if (isFirstIteration(iterationNumber)) {
