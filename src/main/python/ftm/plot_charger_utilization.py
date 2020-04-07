@@ -33,9 +33,10 @@ for iteration in range(last_iteration + 1):
     df_chargers = df_events_refueling.groupby('parkingTaz')
     x = pd.Series()
     y = pd.Series()
-    for parking_taz, df_parking_taz in df_chargers:
-        x = x.append(pd.Series(parking_taz))
-        y = y.append(pd.Series(df_parking_taz.fuel.sum() / 3.6e6))
+    df_refueling_sum = df_events_refueling.groupby('parkingTaz').sum()
+    if len(df_refueling_sum.index) > 0:
+        x = df_refueling_sum.index
+        y = df_refueling_sum.fuel / 3.6e6
 
     plotly_figure.add_trace(
         go.Bar(
