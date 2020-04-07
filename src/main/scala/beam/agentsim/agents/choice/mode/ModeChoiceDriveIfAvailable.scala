@@ -7,10 +7,10 @@ import beam.router.model.EmbodiedBeamTrip
 import beam.sim.BeamServices
 import beam.sim.config.BeamConfig
 import beam.sim.population.AttributesOfIndividual
-import org.matsim.api.core.v01.population.{Activity, Person}
+import org.matsim.api.core.v01.population.{Activity, Person, Plan}
 import org.matsim.core.utils.misc.Time
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 /**
   * BEAM
@@ -54,11 +54,20 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     trips.zipWithIndex foreach {case (trip, index) =>
       val tripStartTime = trip.legs.head.beamLeg.startTime
       val drivingLegs = trip.legs.filter(_.beamLeg.mode.value == "car")
-      val drivingEndPoint = trip.legs.last.beamLeg.travelPath.endPoint
-      val drivingEndPointUtm = this.beamServices.geo.wgs2Utm(drivingEndPoint.loc)
-      val destinationActivity = person.getSelectedPlan.getPlanElements.get(index*2 + 2).asInstanceOf[Activity]
-      val destinationActivityLocationUtm = destinationActivity.getCoord
-      val distanceInM = this.beamServices.geo.distUTMInMeters(destinationActivityLocationUtm, drivingEndPointUtm)
+      var distanceInM: Double = 0.0
+      if (drivingLegs.size > 0) {
+        val drivingEndPoint = drivingLegs.last.beamLeg.travelPath.endPoint
+        val drivingEndPointUtm = this.beamServices.geo.wgs2Utm(drivingEndPoint.loc)
+        val activities = getActivitiesFromPlan(person.getSelectedPlan)
+        if (activities.size >= index + 2) {
+          val destinationActivity = activities(index + 1)
+          val destinationActivityLocationUtm = destinationActivity.getCoord
+          distanceInM = this.beamServices.geo.distUTMInMeters(destinationActivityLocationUtm, drivingEndPointUtm)
+        }
+        else
+          println("Error with destination distance calculation")  // Probably dummy activity
+      }
+
       totalDistanceToDestinationInM += distanceInM
     }
     val walkingDistanceInM = trips.map(
@@ -109,13 +118,22 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     if (minSoc > 0.8)  1
     else if (minSoc > 0.6) 0.7
     else if (minSoc > 0.3) 0.5
-    else if (minSoc > 0.1) 0.2
+    else if (minSoc > 0.2) 0.2
     else 0
   }
 
   def calculateNormalizedWalkingDistance(walkingDistance: Double, maxWalkingDistance: Double, residualUtility: Double): Double = {
-    val beta = -math.log(residualUtility) / maxWalkingDistance
-    math.max(math.exp(-beta*walkingDistance), 0)
+    math.max(math.pow(residualUtility, walkingDistance / maxWalkingDistance), residualUtility)
   }
 
+  def getActivitiesFromPlan(plan: Plan): ArrayBuffer[Activity] = {
+    val activities: ArrayBuffer[Activity] = new ArrayBuffer()
+    plan.getPlanElements.forEach {
+      case activity: Activity =>
+        // Ignore dummy activities
+        if (activity.getType != "Dummy")  activities += activity
+      case _ =>
+    }
+    activities
+  }
 }
