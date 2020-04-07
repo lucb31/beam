@@ -320,7 +320,7 @@ for iteration in range(last_iteration + 1):
 
     # Get refueling data
     df_events_csv = get_all_events_from_events_csv(path_to_events_csv)
-    df_refueling_events = get_refuel_events_from_events_csv(path_to_events_csv, df=df_events_csv)
+    df_refueling_events = get_refuel_events_from_events_csv(path_to_events_csv, df=df_events_csv, add_missing_refuel_events=False)
     df_refueling_events = df_refueling_events[df_refueling_events.vehicle.eq(vehicle_id)]
 
     print("Plotting energy consumption for vehicle with the id", vehicle_id, "of the provided csv data")
@@ -368,6 +368,7 @@ for iteration in range(last_iteration + 1):
         print("Driving events\n", df_driving_events[['type', 'departureTime', 'arrivalTime', 'primaryFuelLevel', 'parkingTaz']].head(20))
         print("Walking events\n", df_walking_events[['type', 'departureTime', 'arrivalTime', 'length']].head(20))
         print("Parking events\n", df_parking_events[['parkingTaz', 'time', 'locationX', 'locationY']].head(20))
+        print("Refuel events\n", df_refueling_events[['time', 'fuel', 'parkingTaz', 'locationX', 'locationY']].head(20))
         #print("All events \n")
 
         events_plot_df = pd.DataFrame({

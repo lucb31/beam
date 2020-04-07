@@ -33,6 +33,7 @@ def get_persons_to_vehicle_df(input_filename):
 
     return df
 
+
 def get_refuel_and_parking_events_from_event_xml(input_filename):
     tree = ET.parse(input_filename)
     root = tree.getroot()
@@ -78,7 +79,7 @@ def get_all_events_from_events_csv(path_to_events_csv):
     return pd.read_csv(path_to_events_csv, sep=",", index_col=None, header=0)
 
 
-def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missing_refuel_events=True):
+def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missing_refuel_events=False):
     # Check if events already parsed
     path_to_charging_events_csv = path_to_events_csv.split(".events.")[0] + ".chargingEvents.csv"
     if path.exists(path_to_charging_events_csv):
@@ -149,7 +150,7 @@ def get_parking_events_from_events_csv(path_to_events_csv="", df=None):
         df = get_all_events_from_events_csv(path_to_events_csv)
     df_parking = df[df['type'] == "ParkEvent"]
     df_parking = df_parking.reset_index(drop=True)
-    return df_parking
+    return df_columns_to_numeric(df_parking, ['vehicle', 'driver'])
 
 
 def get_events_with_fuel_level_from_events_csv(path_to_events_csv="", df=None):
