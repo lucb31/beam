@@ -1,5 +1,31 @@
 import xml.etree.ElementTree as ET
 import gzip
+import pandas as pd
+from os import path
+
+from python.ftm.plot_events import df_columns_to_numeric
+
+
+def filter_plans_by_vehicle_id_from_plans_csv(path_to_population_csv, path_to_plans_csv, vehicle_id):
+    assert path.exists(path_to_population_csv)
+    df_population = df_columns_to_numeric(pd.read_csv(path_to_population_csv, sep=",", index_col=None, header=0), ['personId', 'householdId'])
+    person_id = df_population[df_population['householdId'] == vehicle_id].personId.iloc[0]
+    return filter_plans_by_person_id_from_plans_csv(path_to_plans_csv, person_id)
+
+
+def filter_plans_by_person_id_from_plans_csv(path_to_plans_csv, person_id):
+    assert path.exists(path_to_plans_csv)
+    df_plans = df_columns_to_numeric(pd.read_csv(path_to_plans_csv, sep=",", index_col=None, header=0), ['personId'])
+    df_plans = df_plans[df_plans['personId'] == person_id]
+    return df_plans
+
+
+def get_vehicle_id_from_population_csv(path_to_population_csv, person_id):
+    assert path.exists(path_to_population_csv)
+    df_population = df_columns_to_numeric(pd.read_csv(path_to_population_csv, sep=",", index_col=None, header=0), ['personId', 'householdId'])
+    vehicle_id = df_population[df_population['personId'] == person_id].householdId.iloc[0]
+    return vehicle_id
+
 
 def filter_plans_by_vehicle_id(filepath_households_xml, filepath_plans_xml, vehicle_id = 0, output_filename=None):
     # get person id from households.xml
@@ -38,3 +64,4 @@ def filter_plans_by_vehicle_id(filepath_households_xml, filepath_plans_xml, vehi
             fileHandle.close()
 
         return tree
+
