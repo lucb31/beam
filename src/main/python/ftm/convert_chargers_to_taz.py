@@ -11,7 +11,7 @@ df = pd.DataFrame(columns=['latitude', 'longitude', 'numStalls', 'power', 'x', '
 # parse XML
 for node in root:
     is_charging_station = False
-    lat, lon, power, num_stalls = 0, 0, 7.2, 1
+    lat, lon, power, num_stalls = 0, 0, 22, 2
 
     # Get position
     if 'lat' in node.attrib:
