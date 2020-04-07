@@ -37,6 +37,7 @@ object BeamConfig {
       endTime: java.lang.String,
       firstIteration: scala.Int,
       lastIteration: scala.Int,
+      numAgents: scala.Int,
       populationAdjustment: java.lang.String,
       scenarios: BeamConfig.Beam.Agentsim.Scenarios,
       scheduleMonitorTask: BeamConfig.Beam.Agentsim.ScheduleMonitorTask,
@@ -1508,6 +1509,7 @@ object BeamConfig {
           endTime = if (c.hasPathOrNull("endTime")) c.getString("endTime") else "30:00:00",
           firstIteration = if (c.hasPathOrNull("firstIteration")) c.getInt("firstIteration") else 0,
           lastIteration = if (c.hasPathOrNull("lastIteration")) c.getInt("lastIteration") else 0,
+          numAgents = if (c.hasPathOrNull("numAgents")) c.getInt("numAgents") else 0,
           populationAdjustment =
             if (c.hasPathOrNull("populationAdjustment")) c.getString("populationAdjustment") else "DEFAULT_ADJUSTMENT",
           scenarios = BeamConfig.Beam.Agentsim.Scenarios(
