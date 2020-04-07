@@ -34,10 +34,13 @@ object ConvertPlan extends App with StrictLogging {
       new FileOutputStream(dest) getChannel() transferFrom(new FileInputStream(src) getChannel, 0, Long.MaxValue )
 
     // Copy vehicles
+    /*
     src = new File(conversionConfig.scenarioDirectory + "/conversion-input/vehicles.csv")
     dest = new File(conversionConfig.scenarioDirectory + "/vehicles.csv")
     if (src.isFile())
       new FileOutputStream(dest) getChannel() transferFrom(new FileInputStream(src) getChannel, 0, Long.MaxValue )
+
+     */
 
     // Unzip households
     val householdsInput = new File(conversionConfig.scenarioDirectory + "/households.xml.gz")
