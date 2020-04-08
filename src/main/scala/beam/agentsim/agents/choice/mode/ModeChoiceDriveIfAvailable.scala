@@ -64,8 +64,6 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
           val destinationActivityLocationUtm = destinationActivity.getCoord
           distanceInM = this.beamServices.geo.distUTMInMeters(destinationActivityLocationUtm, drivingEndPointUtm)
         }
-        else
-          println("Error with destination distance calculation")  // Probably dummy activity
       }
 
       totalDistanceToDestinationInM += distanceInM
