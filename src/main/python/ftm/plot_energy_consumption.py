@@ -314,7 +314,9 @@ for iteration in range(last_iteration + 1):
     df_consumption_per_trip = pd.read_csv(working_dir + "vehConsumptionPerTrip.csv")
     df_consumption_per_link = pd.read_csv(working_dir + "vehConsumptionPerLink.csv")
     while vehicle_id == 0:
-        vehicle_id = randrange(df_consumption_per_trip.vehicleId.max())
+        vehicle_ids = df_consumption_per_link.vehicleId.unique()
+        index = randrange(vehicle_ids.size)
+        vehicle_id = vehicle_ids[index]
     df_consumption_per_trip = df_consumption_per_trip[df_consumption_per_trip.vehicleId == vehicle_id]
     df_consumption_per_link = df_consumption_per_link[df_consumption_per_link.vehicleId == vehicle_id]
 
