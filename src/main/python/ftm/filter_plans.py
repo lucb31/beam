@@ -9,8 +9,12 @@ from python.ftm.plot_events import df_columns_to_numeric
 def filter_plans_by_vehicle_id_from_plans_csv(path_to_population_csv, path_to_plans_csv, vehicle_id):
     assert path.exists(path_to_population_csv)
     df_population = df_columns_to_numeric(pd.read_csv(path_to_population_csv, sep=",", index_col=None, header=0), ['personId', 'householdId'])
-    person_id = df_population[df_population['householdId'] == vehicle_id].personId.iloc[0]
-    return filter_plans_by_person_id_from_plans_csv(path_to_plans_csv, person_id)
+    df_filtered = df_population[df_population['householdId'] == vehicle_id]
+    if len(df_filtered.index > 0):
+        person_id = df_filtered.personId.iloc[0]
+        return filter_plans_by_person_id_from_plans_csv(path_to_plans_csv, person_id)
+    else:
+        return None
 
 
 def filter_plans_by_person_id_from_plans_csv(path_to_plans_csv, person_id):
@@ -23,8 +27,11 @@ def filter_plans_by_person_id_from_plans_csv(path_to_plans_csv, person_id):
 def get_vehicle_id_from_population_csv(path_to_population_csv, person_id):
     assert path.exists(path_to_population_csv)
     df_population = df_columns_to_numeric(pd.read_csv(path_to_population_csv, sep=",", index_col=None, header=0), ['personId', 'householdId'])
-    vehicle_id = df_population[df_population['personId'] == person_id].householdId.iloc[0]
-    return vehicle_id
+    df_filtered = df_population[df_population['personId'] == person_id]
+    if len(df_filtered.index > 0):
+        return df_filtered.householdId.iloc[0]
+    else :
+        return 0
 
 
 def filter_plans_by_vehicle_id(filepath_households_xml, filepath_plans_xml, vehicle_id = 0, output_filename=None):
