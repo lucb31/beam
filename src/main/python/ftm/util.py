@@ -23,6 +23,18 @@ def get_iteration_dir(run_dir, iteration):
     return run_dir + "ITERS/it." + str(iteration) + "/" + str(iteration) + "."
 
 
+def get_last_iteration(run_dir):
+    last_dir = ''
+    for entry in scandir.scandir(run_dir + "ITERS/"):
+        if entry.name > last_dir:
+            last_dir = entry.name
+    try:
+        last_iteration = int(last_dir.split(".")[1])
+    except:
+        last_iteration = 0
+    return last_iteration
+
+
 def seconds_to_time_string(seconds):
     hour = int(seconds / 3600)
     minute = int((seconds - hour * 3600) / 60)
