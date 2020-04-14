@@ -8,7 +8,7 @@ import ftm.util.{ConvertPlan, CsvTools}
 object RunTools {
   def preRunActivity(config: com.typesafe.config.Config, beamExecutionConfig: BeamExecutionConfig): Unit = {
     // TODO Only convert if population file name has changed
-    ConvertPlan.convertWithConfig(config)
+    //ConvertPlan.convertWithConfig(config)
   }
 
   def postRunActivity(beamExecutionConfig: BeamExecutionConfig): Unit = {
