@@ -1,5 +1,6 @@
-package beam.replanning
+package ftm.replanning
 
+import beam.replanning.{PlansStrategyAdopter, ReplanningUtil}
 import javax.inject.Inject
 import org.matsim.api.core.v01.population._
 import org.matsim.core.config.Config

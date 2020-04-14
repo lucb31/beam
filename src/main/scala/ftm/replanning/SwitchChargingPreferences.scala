@@ -1,7 +1,8 @@
-package beam.replanning
+package ftm.replanning
 
+import beam.replanning.{PlansStrategyAdopter, ReplanningUtil}
 import javax.inject.Inject
-import org.matsim.api.core.v01.population.{Activity, HasPlansAndId, Leg, Person, Plan}
+import org.matsim.api.core.v01.population.{HasPlansAndId, Person, Plan}
 import org.matsim.core.config.Config
 import org.slf4j.LoggerFactory
 
