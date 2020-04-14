@@ -59,8 +59,7 @@ trait ChoosesParking extends {
       var allowCharging = false
       var forceCharging = false
 
-      val chargeAtActivity = matsimPlan.getAttributes.getAttribute("chargeAtActivity").asInstanceOf[Int]
-      val chargingSeq = chargeAtActivityToBooleanSeq(chargeAtActivity)
+      val chargingSeq = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
 
       if (chargingSeq(personData.currentActivityIndex)) {
         allowCharging = true
@@ -282,9 +281,6 @@ trait ChoosesParking extends {
     valueOfTime: Double
   ): Double = -cost - energyCharge
 
-  def chargeAtActivityToBooleanSeq(chargeAtActivity: Int): IndexedSeq[Boolean] = {
-    //val combinations = scala.math.pow(2, matsimPlan.getPlanElements.size() - 1).toInt
-    (0x100 + chargeAtActivity).toBinaryString.tail.map{ case '1' => true; case _ => false }.reverse
-  }
+
 
 }
