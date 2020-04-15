@@ -19,6 +19,7 @@ import org.matsim.api.core.v01.events.PersonLeavesVehicleEvent
 
 import scala.concurrent.duration.Duration
 import beam.agentsim.infrastructure.{ParkingInquiry, ParkingInquiryResponse}
+import ftm.util.PopulationUtil
 
 /**
   * BEAM
@@ -60,8 +61,8 @@ trait ChoosesParking extends {
       var forceCharging = false
 
       val chargingSeq = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
-      if (chargingSeq.size < personData.currentActivityIndex - 1) {
-        logger.error("Charging Sequence %s is out of bounds for activity index %s. ", chargingSeq.toString(), personData.currentActivityIndex)
+      if (chargingSeq.size < personData.currentActivityIndex + 1) {
+        logger.error("Charging Sequence {} is out of bounds for activity {}. ", chargingSeq.toString(), currentActivity(personData))
       }
       else if (chargingSeq(personData.currentActivityIndex)) {
         allowCharging = true
@@ -135,6 +136,21 @@ trait ChoosesParking extends {
 
       val distance =
         beamServices.geo.distUTMInMeters(stall.locationUTM, beamServices.geo.wgs2Utm(nextLeg.travelPath.endPoint.loc))
+
+      // Check if replanning is needed
+      if (stall.tazId.toString == "default") {
+        if (beamServices.beamConfig.ftm.withinDayChargingReplanning) {
+          val chargingSequence = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
+          val activityIndex = data.asInstanceOf[BasePersonData].currentActivityIndex
+          val newChargingSequence = PopulationUtil.moveChargingActivityToNextOpenSlotInChargingSequence(chargingSequence, activityIndex)
+          val newChargeAtActivity = PopulationUtil.chargeAtActivityBooleanSeqToString(newChargingSequence)
+          if (chargingSequence != newChargingSequence) {
+            logger.warn("Within Day Charging Replanning occured at activity %s", currentActivity(data.asInstanceOf[BasePersonData]))
+            matsimPlan.getAttributes.removeAttribute("chargeAtActivity")
+            matsimPlan.getAttributes.putAttribute("chargeAtActivity", newChargeAtActivity)
+          }
+        }
+      }
       // If the stall is co-located with our destination... then continue on but add the stall to PersonData
       if (distance <= distanceThresholdToIgnoreWalking) {
         val (_, triggerId) = releaseTickAndTriggerId()

@@ -80,6 +80,9 @@ object PopulationUtil {
   }
 
   def moveChargingActivityInChargingSequence(sequence: IndexedSeq[Boolean]): IndexedSeq[Boolean] = {
+    // Removes a random charging activity from the sequence and adds a new one at a random position
+    // Sequence cannot stay the same
+
     // Check if we have a charging activity to move
     var newSequence = sequence
     if (sequence.filter(value => value).size > 0) {
@@ -87,6 +90,23 @@ object PopulationUtil {
       while(newSequence == sequence) {
         newSequence = removeChargingActivityFromChargingSequence(newSequence)
         newSequence = addChargingActivityToChargingSequence(newSequence)
+      }
+    }
+    newSequence
+  }
+
+  def moveChargingActivityToNextOpenSlotInChargingSequence(sequence: IndexedSeq[Boolean], index: Int): IndexedSeq[Boolean] = {
+    // Moves specific charging activity to the next possible time
+    var newSequence = sequence
+    // Check if there is a charging activity at index position
+    if (sequence(index)) {
+      var success = false
+      for (nextIndex <- index+1 to sequence.size - 1) {
+        if (!success && !sequence(nextIndex)) {
+          newSequence = sequence.updated(nextIndex, true)
+          newSequence = newSequence.updated(index, false)
+          success = true
+        }
       }
     }
     newSequence

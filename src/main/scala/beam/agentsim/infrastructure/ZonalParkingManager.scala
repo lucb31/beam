@@ -1,24 +1,19 @@
 package beam.agentsim.infrastructure
 
 import scala.util.{Failure, Random, Success, Try}
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import beam.agentsim.Resource.ReleaseParkingStall
 import beam.agentsim.agents.choice.logit.UtilityFunctionOperation
 import beam.agentsim.agents.vehicles.FuelType.Electricity
 import beam.agentsim.infrastructure.charging.ChargingPointType
-import beam.agentsim.infrastructure.parking.ParkingZoneSearch.{
-  ParkingAlternative,
-  ParkingZoneSearchConfiguration,
-  ParkingZoneSearchParams
-}
+import beam.agentsim.infrastructure.parking.ParkingZoneSearch.{ParkingAlternative, ParkingZoneSearchConfiguration, ParkingZoneSearchParams}
 import beam.agentsim.infrastructure.parking._
 import beam.agentsim.infrastructure.taz.{TAZ, TAZTreeMap}
 import beam.sim.common.GeoUtils
 import beam.sim.config.BeamConfig
 import com.typesafe.scalalogging.LazyLogging
 import com.vividsolutions.jts.geom.Envelope
-import org.matsim.api.core.v01.Coord
+import org.matsim.api.core.v01.{Coord, Id}
 
 class ZonalParkingManager(
   tazTreeMap: TAZTreeMap,
@@ -277,7 +272,13 @@ class ZonalParkingManager(
               inquiry.destinationUtm.getY + 2000,
               inquiry.destinationUtm.getY - 2000
             )
-            val newStall = ParkingStall.lastResortStall(boxAroundRequest, rand)
+            val newStall = inquiry.forceCharging match {
+              case true => {
+                // Replanning needed
+                ParkingStall.defaultStall(inquiry.destinationUtm)
+              }
+              case _ => ParkingStall.lastResortStall(boxAroundRequest, rand)
+            }
             ParkingZoneSearch.ParkingZoneSearchResult(newStall, ParkingZone.DefaultParkingZone)
         }
 
