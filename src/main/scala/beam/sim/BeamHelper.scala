@@ -39,7 +39,7 @@ import com.google.inject
 import com.typesafe.config.{ConfigFactory, Config => TypesafeConfig}
 import com.typesafe.scalalogging.LazyLogging
 import ftm.RunTools
-import ftm.replanning.{SelectBestPlan, SelectRandomChargingPreferences, SwitchChargingPreferences, SwitchChargingPreferencesRandomizedOrder}
+import ftm.replanning.{ChargingReplanning, SelectBestPlan, SelectRandomChargingPreferences, SwitchChargingPreferences, SwitchChargingPreferencesRandomizedOrder}
 import kamon.Kamon
 import org.matsim.api.core.v01.population.Person
 import org.matsim.api.core.v01.{Id, Scenario}
@@ -189,6 +189,7 @@ trait BeamHelper extends LazyLogging {
           addPlanStrategyBinding("SwitchChargingPreferencesRandomizedOrder").to(classOf[SwitchChargingPreferencesRandomizedOrder])
           addPlanStrategyBinding("SelectRandomChargingPreferences").to(classOf[SelectRandomChargingPreferences])
           addPlanStrategyBinding("SelectBestPlan").to(classOf[SelectBestPlan])
+          addPlanStrategyBinding("ChargingReplanning").to(classOf[ChargingReplanning])
           addPlanStrategyBinding("ClearRoutes").to(classOf[ClearRoutes])
           addPlanStrategyBinding("ClearModes").to(classOf[ClearModes])
           addPlanStrategyBinding("TimeMutator").to(classOf[BeamTimeMutator])
