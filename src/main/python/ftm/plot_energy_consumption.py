@@ -4,7 +4,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from random import randrange
 
-from python.ftm.filter_plans import filter_plans_by_vehicle_id
+from python.ftm.filter_plans import filter_plans_by_vehicle_id, filter_plans_by_vehicle_id_from_plans_csv, \
+    filter_plans_by_person_id_from_plans_csv, get_vehicle_id_from_population_csv
 from python.ftm.plot_events import get_driving_events_from_events_csv, \
     get_walking_events_from_events_csv, get_parking_events_from_events_csv, get_all_events_from_events_csv, \
     get_refuel_events_from_events_csv, get_charging_events_from_events_csv
@@ -242,10 +243,10 @@ def printTripsSummary(df):
 
 def concat_event_info_string(x, y, event_type, taz):
     info_string = concat_trip_info_string(x, y) + "<br>"
-    if taz > 0:
+    try:
         return info_string + str(event_type) + " (TAZ " + str(int(taz)) + ")"
-    else:
-        return info_string + str(event_type)
+    except:
+        return info_string + str(event_type) + " (TAZ " + str(taz) +")"
 
 
 def concat_trip_info_string(x, y):
@@ -272,6 +273,30 @@ def print_parking_events_for_taz(taz_ids, parking_df):
             print("No Parking events for TAZ", taz)
 
 
+def calc_end_and_min_soc_means(df):
+    end_socs = pd.Series([])
+    min_socs = pd.Series([])
+    negative_socs = 0
+    for name, group in df.groupby(['vehicleId']):
+        end_soc = df.iloc[group['spaceTime'].idxmax()].primaryFuelLevelAfterLeg
+        min_soc = group.primaryFuelLevelAfterLeg.min()
+        if min_soc < 0:
+            negative_socs += 1
+        end_socs = end_socs.append(pd.Series([end_soc]))
+        min_socs = min_socs.append(pd.Series([min_soc]))
+    print("mean end soc [kWh]: ", end_socs.mean() / 3.6e6, "mean min soc [kWh]", min_socs.mean() / 3.6e6)
+    return end_socs.mean() / 3.6e6, min_socs.mean() / 3.6e6, negative_socs
+
+def calc_refueling_events_mean(df):
+    if len(df.index) > 0:
+        refueling_events = pd.Series([])
+        for name, group in df.groupby(['vehicle']):
+            df_group_filtered = group[group['fuel'] > 0]
+            refueling_events = refueling_events.append(pd.Series([len(df_group_filtered.index)]))
+        print("mean refueling events: ", refueling_events.mean())
+        return refueling_events.mean()
+    else:
+        return 0
 
 pd.set_option('display.max_columns', 500)
 baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
@@ -288,14 +313,20 @@ xlabel = 'Time of day in h'
 ylabel = 'Current SOC in kWh'
 plotly_stacked_layout = True
 
-
 # Initialize plot figures
 fig, ax = plt.subplots()
 fig_separate, ax_separate = plt.subplots(num_plot_rows, num_plot_cols)
 fig_separate_events, ax_separate_events = plt.subplots(num_plot_rows, num_plot_cols)
-plotly_figure = make_subplots(rows=num_plot_rows, cols=num_plot_cols, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"))
+subplot_titles = ["Iteration "+str(iteration) for iteration in range(0, last_iteration + 1)]
+plotly_figure = make_subplots(rows=num_plot_rows, cols=num_plot_cols, subplot_titles=subplot_titles)
 if plotly_stacked_layout:
-    plotly_figure = make_subplots(rows=last_iteration+1, cols=1, subplot_titles=("Iteration 0", "Iteration 1", "Iteration 2", "Iteration 3"), shared_xaxes=True, vertical_spacing=0.02)
+    plotly_figure = make_subplots(rows=last_iteration+1, cols=1, subplot_titles=subplot_titles, shared_xaxes=True, vertical_spacing=0.02)
+
+# Init mean Series
+mean_end_socs = pd.Series()
+mean_min_socs = pd.Series()
+mean_refueling_events = pd.Series()
+negative_socs_series = pd.Series()
 
 # Draw plots for every iteration
 for iteration in range(last_iteration + 1):
@@ -313,6 +344,13 @@ for iteration in range(last_iteration + 1):
     # Read and filter consumption data from csv data
     df_consumption_per_trip = pd.read_csv(working_dir + "vehConsumptionPerTrip.csv")
     df_consumption_per_link = pd.read_csv(working_dir + "vehConsumptionPerLink.csv")
+
+    # Log mean socs
+    (mean_end_soc, mean_min_soc, negative_socs) = calc_end_and_min_soc_means(df_consumption_per_trip)
+    mean_end_socs = mean_end_socs.append(pd.Series([mean_end_soc]), ignore_index=True)
+    mean_min_socs = mean_min_socs.append(pd.Series([mean_min_soc]), ignore_index=True)
+    negative_socs_series = negative_socs_series.append(pd.Series([negative_socs]), ignore_index=True)
+
     while vehicle_id == 0:
         vehicle_ids = df_consumption_per_link.vehicleId.unique()
         index = randrange(vehicle_ids.size)
@@ -323,6 +361,7 @@ for iteration in range(last_iteration + 1):
     # Get refueling data
     df_events_csv = get_all_events_from_events_csv(path_to_events_csv)
     df_refueling_events = get_refuel_events_from_events_csv(path_to_events_csv, df=df_events_csv, add_missing_refuel_events=False)
+    mean_refueling_events = mean_refueling_events.append(pd.Series([calc_refueling_events_mean(df_refueling_events)]), ignore_index=True)
     df_refueling_events = df_refueling_events[df_refueling_events.vehicle.eq(vehicle_id)]
 
     print("Plotting energy consumption for vehicle with the id", vehicle_id, "of the provided csv data")
@@ -346,6 +385,7 @@ for iteration in range(last_iteration + 1):
             col=plot_col
         )
 
+        """
         ax_separate[int(iteration / 2)][iteration % 2].scatter(plot_df.xval, plot_df.yval, label='Iteration ' + str(iteration))
         ax_separate[int(iteration / 2)][iteration % 2].set_xlabel(xlabel)
         ax_separate[int(iteration / 2)][iteration % 2].set_ylabel(ylabel)
@@ -354,6 +394,7 @@ for iteration in range(last_iteration + 1):
         ax_separate[int(iteration / 2)][iteration % 2].set_title('Iteration ' + str(iteration))
         ax_separate[int(iteration / 2)][iteration % 2].grid()
         ax.scatter(plot_df.xval, plot_df.yval, label='Iteration ' + str(iteration))
+        """
 
         # Parse events from csv
         # TODO Check for PlugInEvents w/o PlugOut
@@ -371,7 +412,6 @@ for iteration in range(last_iteration + 1):
         print("Walking events\n", df_walking_events[['type', 'departureTime', 'arrivalTime', 'length']].head(20))
         print("Parking events\n", df_parking_events[['parkingTaz', 'time', 'locationX', 'locationY']].head(20))
         print("Refuel events\n", df_refueling_events[['time', 'fuel', 'parkingTaz', 'locationX', 'locationY']].head(20))
-        #print("All events \n")
 
         events_plot_df = pd.DataFrame({
             'xval': df_driving_events.time / 3600,
@@ -384,6 +424,7 @@ for iteration in range(last_iteration + 1):
             'info': [concat_event_info_string(x, y, event_type, taz) for x, y, event_type, taz in zip(df_charging_events.time / 3600, df_charging_events.primaryFuelLevel / 3.6e6, df_charging_events.type, df_charging_events.parkingTaz)]
         }))
         events_plot_df = events_plot_df.sort_values(by=['xval'])
+        """
         ax_separate_events[int(iteration / 2)][iteration % 2].plot(events_plot_df.xval, events_plot_df.yval)
         ax_separate_events[int(iteration / 2)][iteration % 2].scatter(events_plot_df.xval, events_plot_df.yval)
         ax_separate_events[int(iteration / 2)][iteration % 2].set_xlabel(xlabel)
@@ -392,7 +433,8 @@ for iteration in range(last_iteration + 1):
         ax_separate_events[int(iteration / 2)][iteration % 2].set_ylim(5, 15)
         ax_separate_events[int(iteration / 2)][iteration % 2].set_title('Iteration ' + str(iteration))
         ax_separate_events[int(iteration / 2)][iteration % 2].grid()
-        fig_separate_events.suptitle("Data from events")
+        fig_separate_events.subtitle("Data from events")
+        """
 
         plotly_figure.add_trace(
             go.Scatter(
@@ -419,10 +461,32 @@ ax.legend()
 #plt.show()
 
 # Show plotly figure
-plotly_figure.update_layout(title_text=title)
+plotly_figure.update_layout(title_text=title, height=350*last_iteration)
 plotly_figure.show()
 
+# Show mean end and min soc plot
+plotly_figure_mean_socs = go.Figure()
+plotly_figure_mean_socs = make_subplots(rows=1, cols=1, subplot_titles=("Iterations"), shared_xaxes=True, vertical_spacing=0.02, )
+plotly_figure_mean_socs.add_trace(go.Scatter(x=mean_end_socs.index, y=mean_end_socs, name='Mean End Soc'))
+plotly_figure_mean_socs.add_trace(go.Scatter(x=mean_min_socs.index.values, y=mean_min_socs.values, name='Mean Min Soc'))
+plotly_figure_mean_socs.add_trace(go.Scatter(x=mean_refueling_events.index.values, y=mean_refueling_events.values, name='Mean number of refueling events'), row=1, col=1)
+plotly_figure_mean_socs.add_trace(go.Scatter(x=negative_socs_series.index.values, y=negative_socs_series.values, name='Number of vehicles with negative soc'), row=1, col=1)
+plotly_figure_mean_socs.update_layout(title_text="Mean end soc, min soc, # of refueling events in simulation " + str(run_dir),
+                                      xaxis_title='Iteration',
+                                      yaxis_title='Energy in kWh',
+                                      yaxis2={
+                                        'title': '[kN.m/(m/s)²]',
+                                        'overlaying': 'y',
+                                        'side': 'right',
+                                        'showgrid': False
+})
+plotly_figure_mean_socs.show()
+
 # Print plans
+#print(get_vehicle_id_from_population_csv(run_dir + "population.csv.gz", 1730289))
+df_plans_vehicle = filter_plans_by_vehicle_id_from_plans_csv(run_dir + "population.csv.gz", get_iteration_dir(run_dir, last_iteration) + "plans.csv.gz", vehicle_id)
+#print(df_plans_vehicle.head(5))
+#df_plans_person = filter_plans_by_person_id_from_plans_csv(get_iteration_dir(run_dir, last_iteration) + "plans.csv.gz", 2387918)
 filter_plans_by_vehicle_id(
     "/home/lucas/IdeaProjects/beam/test/input/munich-simple/households.xml",
     get_iteration_dir(run_dir, 3) + "plans.xml.gz",
