@@ -60,8 +60,10 @@ trait ChoosesParking extends {
       var forceCharging = false
 
       val chargingSeq = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
-
-      if (chargingSeq(personData.currentActivityIndex)) {
+      if (chargingSeq.size < personData.currentActivityIndex - 1) {
+        logger.error("Charging Sequence %s is out of bounds for activity index %s. ", chargingSeq.toString(), personData.currentActivityIndex)
+      }
+      else if (chargingSeq(personData.currentActivityIndex)) {
         allowCharging = true
         forceCharging = true
       }
