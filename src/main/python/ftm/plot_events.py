@@ -185,6 +185,26 @@ def get_charging_events_from_events_csv(path_to_events_csv="", df=None):
     return df_columns_to_numeric(df_events, ['vehicle', 'driver', 'primaryFuelLevel'])
 
 
+def get_total_walking_distances_from_events_csv(path_to_events_csv="", df_walking_events=None):
+    # Check if events already parsed
+    path_to_walking_distances_csv = path_to_events_csv.split(".events.")[0] + ".walkingDistances.csv"
+    if path.exists(path_to_walking_distances_csv):
+        return df_columns_to_numeric(pd.read_csv(path_to_walking_distances_csv, sep=",", index_col=None, header=0), ['person', 'length'])
+    if df_walking_events is None:
+        df_walking_events = get_walking_events_from_events_csv(path_to_events_csv)
+    df_sum = df_walking_events.groupby(['driver']).sum()
+    df_sum.person = df_sum.index
+    df_result = df_sum[['person', 'length']]
+
+
+    # Save analysis data to csv file
+    if path_to_walking_distances_csv != "" and not path.exists(path_to_walking_distances_csv):
+        with open(path_to_walking_distances_csv, mode='w') as charging_events_file:
+            df_result.to_csv(charging_events_file, mode='w', header=True, index=False)
+    return df_columns_to_numeric(df_result, ['person', 'length'])
+
+
+
 def df_columns_to_numeric(df, columns):
     df[columns] = df[columns].apply(pd.to_numeric)
     return df
