@@ -79,7 +79,7 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
 
     val walkingDistanceNormalized = calculateNormalizedWalkingDistance(totalDistanceToDestinationInM, 500, 0.2)
     val minSocRisk = calculateMinSocRiskAcceptance(minSoc)
-    endSoc*beamConfig.ftm.scoring.endSocWeight +
+    Math.max(0, endSoc)*beamConfig.ftm.scoring.endSocWeight +
       minSocRisk*beamConfig.ftm.scoring.minSocWeight +
       walkingDistanceNormalized*beamConfig.ftm.scoring.walkingDistanceWeight
   }
