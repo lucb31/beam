@@ -27,7 +27,7 @@ import com.conveyal.r5.transit.TransportNetwork
 import com.google.inject.Inject
 import com.typesafe.scalalogging.LazyLogging
 import ftm.RunTools
-import ftm.util.CsvTools
+import ftm.util.{CsvTools, PopulationUtil}
 import org.matsim.api.core.v01.network.Link
 import org.matsim.api.core.v01.{Coord, Id}
 import org.matsim.core.utils.misc.Time
@@ -209,31 +209,8 @@ class BeamSim @Inject()(
         val lastActivity = elements.asScala.last.asInstanceOf[Activity]
         val lastIndex = elements.size() - 1
         if (lastActivity.getType == "Home") {
-          val dummyActivity = new Activity {
-            var endTime: Double = lastActivity.getStartTime
-            var startTime: Double = lastActivity.getStartTime
-            var activityType: String = "Dummy"
-            var activityLocation: Coord = lastActivity.getCoord
-            var maxDuration: Double = lastActivity.getStartTime
-            var linkId = lastActivity.getLinkId
-            var facilityId = lastActivity.getFacilityId
-            var attributes = lastActivity.getAttributes
-            override def getEndTime: Double = endTime
-            override def setEndTime(seconds: Double): Unit = endTime = seconds
-            override def getType: String = activityType
-            override def setType(`type`: String): Unit = activityType = `type`
-            override def getCoord: Coord = activityLocation
-            override def getStartTime: Double = startTime
-            override def setStartTime(seconds: Double): Unit = startTime = seconds
-            override def getMaximumDuration: Double = maxDuration
-            override def setMaximumDuration(seconds: Double): Unit = maxDuration = seconds
-            override def getLinkId: Id[Link] = linkId
-            override def getFacilityId: Id[ActivityFacility] = facilityId
-            override def setLinkId(id: Id[Link]): Unit = linkId = id
-            override def setFacilityId(id: Id[ActivityFacility]): Unit = facilityId = id
-            override def setCoord(coord: Coord): Unit = activityLocation = coord
-            override def getAttributes: Attributes = attributes
-          }
+          val dummyActivity = PopulationUtil.cloneActivity(lastActivity)
+          dummyActivity.setType("Dummy")
           dummyActivity.setCoord(new Coord(lastActivity.getCoord.getX + 1, lastActivity.getCoord.getY))
           lastActivity.setEndTime(86400 - 60*10)
           elements.add(dummyActivity)
