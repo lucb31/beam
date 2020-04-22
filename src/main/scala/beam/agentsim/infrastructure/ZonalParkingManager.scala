@@ -18,7 +18,7 @@ import beam.sim.common.GeoUtils
 import beam.sim.config.BeamConfig
 import com.typesafe.scalalogging.LazyLogging
 import com.vividsolutions.jts.geom.Envelope
-import org.matsim.api.core.v01.Coord
+import org.matsim.api.core.v01.{Coord, Id}
 
 class ZonalParkingManager(
   tazTreeMap: TAZTreeMap,
@@ -29,7 +29,10 @@ class ZonalParkingManager(
   minSearchRadius: Double,
   maxSearchRadius: Double,
   boundingBox: Envelope,
-  mnlMultiplierParameters: ParkingMNL.ParkingMNLConfig
+  mnlMultiplierParameters: ParkingMNL.ParkingMNLConfig,
+  chargingCalculationStepSize: Int,
+  chargingCalculationMode: String
+
 ) extends beam.utils.CriticalActor
     with ActorLogging {
 
@@ -74,7 +77,10 @@ class ZonalParkingManager(
           inquiry.beamVehicle match {
             case Some(vehicleType) =>
               vehicleType.beamVehicleType.primaryFuelType match {
-                case Electricity => true
+                case Electricity => inquiry.useChargingSpotIfAvailable match {
+                  case true => true
+                  case _ => false
+                }
                 case _           => false
               }
             case _ => false
@@ -84,7 +90,10 @@ class ZonalParkingManager(
       // allow non-charger ParkingZones
       val returnSpotsWithoutChargers: Boolean = inquiry.activityType.toLowerCase match {
         case "charge" => false
-        case _        => true
+        case _        => inquiry.forceCharging match {
+          case true => false
+          case _ => true
+        }
       }
 
       // ---------------------------------------------------------------------------------------------
@@ -147,8 +156,17 @@ class ZonalParkingManager(
             case None =>
               log.error(s"somehow have a ParkingZone with tazId ${zone.tazId} which is not found in the TAZTreeMap")
               TAZ.DefaultTAZ.coord
-            case Some(taz) =>
-              ParkingStallSampling.availabilityAwareSampling(rand, inquiry.destinationUtm, taz, zone.availability)
+            case Some(taz) => {
+              // Do not sample fixed charging spot locations
+              val zoneId = zone.tazId.toString().toInt
+              if (zoneId > 99) {
+                taz.coord
+              }
+              else {
+                //ParkingStallSampling.availabilityAwareSampling(rand, inquiry.destinationUtm, taz, zone.availability)
+                inquiry.destinationUtm
+              }
+            }
           }
         }
 
@@ -174,7 +192,9 @@ class ZonalParkingManager(
                       beamVehicle.beamVehicleType.primaryFuelCapacityInJoule,
                       1e6,
                       1e6,
-                      parkingDuration
+                      parkingDuration,
+                      chargingCalculationStepSize,
+                      chargingCalculationMode
                     )
                     addedEnergy
                   case None => 0.0 // no charger here
@@ -257,7 +277,13 @@ class ZonalParkingManager(
               inquiry.destinationUtm.getY + 2000,
               inquiry.destinationUtm.getY - 2000
             )
-            val newStall = ParkingStall.lastResortStall(boxAroundRequest, rand)
+            val newStall = inquiry.forceCharging match {
+              case true => {
+                // Replanning needed
+                ParkingStall.defaultStall(inquiry.destinationUtm)
+              }
+              case _ => ParkingStall.lastResortStall(boxAroundRequest, rand)
+            }
             ParkingZoneSearch.ParkingZoneSearchResult(newStall, ParkingZone.DefaultParkingZone)
         }
 
@@ -421,7 +447,9 @@ object ZonalParkingManager extends LazyLogging {
       minSearchRadius,
       maxSearchRadius,
       boundingBox,
-      mnlMultiplierParameters
+      mnlMultiplierParameters,
+      beamConfig.ftm.chargingCalculationStepSize,
+      beamConfig.ftm.chargingCalculationMode
     )
   }
 
@@ -453,7 +481,9 @@ object ZonalParkingManager extends LazyLogging {
       minSearchRadius,
       maxSearchRadius,
       boundingBox,
-      ParkingMNL.DefaultMNLParameters
+      ParkingMNL.DefaultMNLParameters,
+      10,
+      "NonLinear"
     )
   }
 

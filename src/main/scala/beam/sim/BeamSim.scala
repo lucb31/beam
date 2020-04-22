@@ -31,6 +31,8 @@ import beam.utils.{DebugLib, NetworkHelper, ProfilingUtils, SummaryVehicleStatsP
 import com.conveyal.r5.transit.TransportNetwork
 import com.google.inject.Inject
 import com.typesafe.scalalogging.LazyLogging
+import ftm.RunTools
+import ftm.util.{CsvTools, PopulationUtil}
 import org.matsim.api.core.v01.Id
 import org.matsim.api.core.v01.population.{Leg, Person, Population, PopulationFactory}
 import org.matsim.core.population.PopulationUtils
@@ -231,11 +233,49 @@ class BeamSim @Inject()(
     )
 
     ExponentialLazyLogging.reset()
-    beamServices.beamScenario.privateVehicles.values.foreach(
-      _.initializeFuelLevels(Some(beamServices.beamConfig.beam.agentsim.agents.vehicles.meanPrivateVehicleStartingSOC))
+    val iterationNumber = event.getIteration
+
+    CsvTools.writeCsvHeader(
+      "vehicleId,spaceTime,primaryFuelLevelAfterLeg,primaryEnergyConsumedInJoule,onlyLengthPrimaryEnergyConsumedInJoule,legDuration,legLength,legStartTime",
+      "vehConsumptionPerTrip.csv", beamServices.beamConfig, iterationNumber
+    )
+    CsvTools.writeCsvHeader(
+      "vehicleId,linkLength,linkAvgSpeed,energyConsumedInJoule,onlyLengthEnergyConsumedInJoule,legStartTime",
+      "vehConsumptionPerLink.csv", beamServices.beamConfig, iterationNumber
     )
 
-    val iterationNumber = event.getIteration
+    // Generate Dummy activities at the end of the day, if plan ends with home activity
+    if (beamServices.beamConfig.ftm.generateDummyActivitiesAtEndOfDay) {
+      val simulationEndTimeInSeconds = Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt
+      beamServices.matsimServices.getScenario.getPopulation.getPersons.values.forEach(person => {
+        val elements = person.getSelectedPlan.getPlanElements
+        val lastActivity = elements.asScala.last.asInstanceOf[Activity]
+        val lastIndex = elements.size() - 1
+        if (lastActivity.getType == "Home") {
+          val dummyActivity = PopulationUtil.cloneActivity(lastActivity)
+          dummyActivity.setType("Dummy")
+          dummyActivity.setCoord(new Coord(lastActivity.getCoord.getX + 1, lastActivity.getCoord.getY))
+          lastActivity.setEndTime(simulationEndTimeInSeconds - 60*10)
+          elements.add(dummyActivity)
+        }
+      })
+    }
+
+    beamServices.beamScenario.privateVehicles.values.foreach(vehicle => {
+      if (beamServices.beamConfig.ftm.keepVehicleSoc) {
+        /*
+        val personId = this.scenario.getHouseholds.getHouseholds.get(vehicle.id).getMemberIds.get(0)
+        val plan = this.scenario.getPopulation.getPersons.get(personId).getSelectedPlan
+        val prevSoc = plan.getAttributes.getAttribute("endOfDaySoc").asInstanceOf[Double]
+         */
+        val socAfterRefueling = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt)
+        vehicle.primaryFuelLevelInJoules = socAfterRefueling
+      }
+      else {
+        vehicle.initializeFuelLevels(Some(beamServices.beamConfig.beam.agentsim.agents.vehicles.meanPrivateVehicleStartingSOC))
+      }
+      vehicle.setCurrentIteration(iterationNumber)
+    })
 
     val controllerIO = event.getServices.getControlerIO
     if (isFirstIteration(iterationNumber)) {
@@ -361,6 +401,7 @@ class BeamSim @Inject()(
     delayMetricAnalysis.generateDelayAnalysis(event)
 
     writeEventsAnalysisUsing(event)
+    RunTools.convertEventsToViaEvents(beamConfig, event.getIteration())
 
     // Clear the state of private vehicles because they are shared across iterations
     beamServices.beamScenario.privateVehicles.values.foreach(_.resetState())

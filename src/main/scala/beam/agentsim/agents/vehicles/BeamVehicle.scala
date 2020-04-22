@@ -22,6 +22,7 @@ import beam.sim.common.GeoUtils.TurningDirection
 import beam.utils.NetworkHelper
 import beam.utils.ReadWriteLockUtil._
 import beam.utils.logging.ExponentialLazyLogging
+import ftm.util.CsvTools
 import org.matsim.api.core.v01.Id
 import org.matsim.api.core.v01.network.Link
 import org.matsim.vehicles.Vehicle
@@ -63,6 +64,8 @@ class BeamVehicle(
   def primaryFuelLevelInJoules: Double = fuelRWLock.read { primaryFuelLevelInJoulesInternal }
   private var secondaryFuelLevelInJoulesInternal = beamVehicleType.secondaryFuelCapacityInJoule.getOrElse(0.0)
   def secondaryFuelLevelInJoules: Double = fuelRWLock.read { secondaryFuelLevelInJoulesInternal }
+  private var minPrimaryFuelLevelInJoulesInternal = beamVehicleType.primaryFuelCapacityInJoule
+  def minPrimaryFuelLevelInJoules: Double = fuelRWLock.read { minPrimaryFuelLevelInJoulesInternal }
 
   private val mustBeDrivenHomeInternal: AtomicBoolean = new AtomicBoolean(false)
   def isMustBeDrivenHome: Boolean = mustBeDrivenHomeInternal.get()
@@ -87,6 +90,10 @@ class BeamVehicle(
 
   private var lastUsedStallInternal: Option[ParkingStall] = None
   def lastUsedStall: Option[ParkingStall] = stallRWLock.read { lastUsedStallInternal }
+
+  private var currentIterationInternal: Int = 0
+  def currentIteration: Int = stallRWLock.read { currentIterationInternal }
+  def setCurrentIteration(value: Int): Unit = stallRWLock.write { currentIterationInternal = value }
 
   private val chargerRWLock = new ReentrantReadWriteLock()
 
@@ -201,14 +208,28 @@ class BeamVehicle(
         networkHelper,
         fuelConsumptionDataWithOnlyLength_Id_And_Type
       )
-
-    val primaryEnergyForFullLeg =
-      /*val (primaryEnergyForFullLeg, primaryLoggingData) =*/
+    val (primaryEnergyForFullLeg, primaryEnergyForFullLegData) =
       beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
         fuelConsumptionData,
         fallBack = powerTrain.getRateInJoulesPerMeter,
         Primary
       )
+
+    // get link length based consumption data as well
+    val onlyLengthFuelConsumptionData =
+      BeamVehicle.collectFuelConsumptionData(
+        beamLeg,
+        beamVehicleType,
+        networkHelper,
+        true
+      )
+    val (onlyLengthPrimaryEnergyForFullLeg, onlyLengthPrimaryEnergyForFullLegData) =
+      beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
+        onlyLengthFuelConsumptionData,
+        fallBack = powerTrain.getRateInJoulesPerMeter,
+        Primary
+      )
+
     var primaryEnergyConsumed = primaryEnergyForFullLeg
     var secondaryEnergyConsumed = 0.0
     /*var secondaryLoggingData = IndexedSeq.empty[LoggingData]*/
@@ -216,8 +237,7 @@ class BeamVehicle(
       if (primaryFuelLevelInJoulesInternal < primaryEnergyForFullLeg) {
         if (secondaryFuelLevelInJoulesInternal > 0.0) {
           // Use secondary fuel if possible
-          val secondaryEnergyForFullLeg =
-            /*val (secondaryEnergyForFullLeg, secondaryLoggingData) =*/
+          val (secondaryEnergyForFullLeg, secondaryLoggingData) =
             beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
               fuelConsumptionData,
               fallBack = powerTrain.getRateInJoulesPerMeter,
@@ -245,6 +265,34 @@ class BeamVehicle(
       }
       primaryFuelLevelInJoulesInternal = primaryFuelLevelInJoulesInternal - primaryEnergyConsumed
       secondaryFuelLevelInJoulesInternal = secondaryFuelLevelInJoulesInternal - secondaryEnergyConsumed
+      minPrimaryFuelLevelInJoulesInternal = Math.min(primaryFuelLevelInJoulesInternal, minPrimaryFuelLevelInJoulesInternal)
+
+      // Log calculated energy for debugging and plotting
+      if (beamLeg.mode.value == "car") {
+        CsvTools.writeToCsv(IndexedSeq(
+          id,
+          spaceTime.time,
+          primaryFuelLevelInJoules,
+          primaryEnergyConsumed,
+          onlyLengthPrimaryEnergyForFullLeg,
+          beamLeg.duration,
+          beamLeg.travelPath.distanceInM,
+          beamLeg.startTime
+        ), "vehConsumptionPerTrip.csv", beamScenario.beamConfig, currentIteration)
+
+        if (primaryEnergyForFullLegData.length == fuelConsumptionData.length && primaryEnergyForFullLegData.length > 0) {
+          for (i <- 0 to primaryEnergyForFullLegData.length - 1) {
+            CsvTools.writeToCsv(IndexedSeq(
+              id,
+              fuelConsumptionData(i).linkLength.getOrElse(0),
+              fuelConsumptionData(i).averageSpeed.getOrElse(0),
+              primaryEnergyForFullLegData(i),
+              onlyLengthPrimaryEnergyForFullLegData(i),
+              beamLeg.startTime
+            ), "vehConsumptionPerLink.csv", beamScenario.beamConfig, currentIteration)
+
+          }
+        }
     }
     FuelConsumed(
       primaryEnergyConsumed,
@@ -273,7 +321,9 @@ class BeamVehicle(
               beamVehicleType.primaryFuelCapacityInJoule,
               1e6,
               1e6,
-              sessionDurationLimit
+              sessionDurationLimit,
+              beamVehicleType.chargingCalculationStepSize,
+              beamVehicleType.chargingCalculationMode
             )
           case None =>
             (0, 0.0)
@@ -281,6 +331,15 @@ class BeamVehicle(
       case None =>
         (0, 0.0) // if we are not parked, no refueling can occur
     }
+  }
+
+  def fuelAfterRefuelSession(endTime: Int): Double = {
+    var soc = primaryFuelLevelInJoules
+    if (isConnectedToChargingPoint) {
+      val (_, energy) = refuelingSessionDurationAndEnergyInJoules(Some(endTime - spaceTime.time))
+      soc += energy
+    }
+    soc
   }
 
   def getState: BeamVehicleState = {

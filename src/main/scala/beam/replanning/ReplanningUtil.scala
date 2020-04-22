@@ -6,10 +6,10 @@ import org.matsim.api.core.v01.population._
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup
 import org.matsim.core.population.PopulationUtils
 import org.matsim.core.replanning.selectors.RandomPlanSelector
+import org.matsim.utils.objectattributes.attributable.Attributes
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
 
 object ReplanningUtil {
 
@@ -53,6 +53,7 @@ object ReplanningUtil {
       }
       attributes.putAttribute("modality-style", modalityStyle)
       attributes.putAttribute("scores", scores)
+      copyAttributesFromSelectedPlan(List("endOfDaySoc", "chargeAtActivity", "chargingStops", "walkingDistanceInM", "minSoc"), attributes, person.getSelectedPlan)
       if (attributes.getAttribute("modality-style") == null) {
         val i = 0
       }
@@ -91,6 +92,10 @@ object ReplanningUtil {
 
   def copyRandomPlanAndSelectForMutation(person: Person): Unit = {
     person.setSelectedPlan(new RandomPlanSelector().selectPlan(person))
+    copyPlanAndSelectForMutation(person)
+  }
+
+  def copyPlanAndSelectForMutation(person: Person): Unit = {
     val newPlan = PopulationUtils.createPlan(person.getSelectedPlan.getPerson)
     PopulationUtils.copyFromTo(person.getSelectedPlan, newPlan)
     person.addPlan(newPlan)
@@ -109,5 +114,13 @@ object ReplanningUtil {
     }
     newPlan.getPlanElements.add(originalPlan.getPlanElements.get(originalPlan.getPlanElements.size() - 1))
     newPlan
+  }
+
+  def copyAttributesFromSelectedPlan(attributesKeys: List[String], attributes: Attributes, selectedPlan: Plan): Unit = {
+    attributesKeys.foreach(key => {
+      val selectedPlanValue = selectedPlan.getAttributes.getAttribute(key)
+      if (selectedPlanValue != null)
+        attributes.putAttribute(key, selectedPlanValue)
+    })
   }
 }

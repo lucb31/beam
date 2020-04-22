@@ -80,7 +80,7 @@ object MatsimConversionTool extends App {
       mapWriter = new CsvMapWriter(new FileWriter(outputFilePath), CsvPreference.STANDARD_PREFERENCE)
 
       val processors = ShapeUtils.getProcessors
-      val header = Array[String]("taz", "coord-x", "coord-y")
+      val header = Array[String]("taz", "coord-x", "coord-y", "area")
 
       mapWriter.writeHeader(header: _*)
 
@@ -93,6 +93,7 @@ object MatsimConversionTool extends App {
 
       tazToWrite.put(header(1), tcoord.getX.toString)
       tazToWrite.put(header(2), tcoord.getY.toString)
+      tazToWrite.put(header(3), "0")
       mapWriter.write(tazToWrite, header, processors)
     } finally {
       if (mapWriter != null) {

@@ -5,7 +5,8 @@ package beam.sim.config
 
 case class BeamConfig(
   beam: BeamConfig.Beam,
-  matsim: BeamConfig.Matsim
+  matsim: BeamConfig.Matsim,
+  ftm: BeamConfig.FTM
 )
 
 object BeamConfig {
@@ -39,6 +40,7 @@ object BeamConfig {
       endTime: java.lang.String,
       firstIteration: scala.Int,
       lastIteration: scala.Int,
+      numAgents: scala.Int,
       populationAdjustment: java.lang.String,
       scenarios: BeamConfig.Beam.Agentsim.Scenarios,
       scheduleMonitorTask: BeamConfig.Beam.Agentsim.ScheduleMonitorTask,
@@ -1528,6 +1530,7 @@ object BeamConfig {
           endTime = if (c.hasPathOrNull("endTime")) c.getString("endTime") else "30:00:00",
           firstIteration = if (c.hasPathOrNull("firstIteration")) c.getInt("firstIteration") else 0,
           lastIteration = if (c.hasPathOrNull("lastIteration")) c.getInt("lastIteration") else 0,
+          numAgents = if (c.hasPathOrNull("numAgents")) c.getInt("numAgents") else 0,
           populationAdjustment =
             if (c.hasPathOrNull("populationAdjustment")) c.getString("populationAdjustment") else "DEFAULT_ADJUSTMENT",
           scenarios = BeamConfig.Beam.Agentsim.Scenarios(
@@ -3634,6 +3637,47 @@ object BeamConfig {
     }
   }
 
+  case class FTM(
+                keepVehicleSoc: scala.Boolean,
+                chargingCalculationStepSize: scala.Int,
+                chargingCalculationMode: java.lang.String,
+                scoring: FTM.Scoring,
+                withinDayChargingReplanning: scala.Boolean,
+                generateDummyActivitiesAtEndOfDay: scala.Boolean
+                )
+
+  object FTM {
+    case class Scoring(
+                      endSocWeight: scala.Double,
+                      minSocWeight: scala.Double,
+                      walkingDistanceWeight: scala.Double
+                      )
+
+    object Scoring {
+      def apply(c: com.typesafe.config.Config): BeamConfig.FTM.Scoring = {
+        BeamConfig.FTM.Scoring(
+          endSocWeight = if (c.hasPathOrNull("endSocWeight")) c.getDouble("endSocWeight") else 1,
+          minSocWeight = if (c.hasPathOrNull("minSocWeight")) c.getDouble("minSocWeight") else 1,
+          walkingDistanceWeight = if (c.hasPathOrNull("walkingDistanceWeight")) c.getDouble("walkingDistanceWeight") else 1
+        )
+      }
+    }
+
+    def apply(c: com.typesafe.config.Config): BeamConfig.FTM = {
+      BeamConfig.FTM(
+        keepVehicleSoc = c.hasPathOrNull("keepVehicleSoc") && c.getBoolean("keepVehicleSoc"),  // def: false
+        chargingCalculationStepSize = if (c.hasPathOrNull("chargingCalculationStepSize")) c.getInt("chargingCalculationStepSize") else 10,
+        chargingCalculationMode = if (c.hasPathOrNull("chargingCalculationMode")) c.getString("chargingCalculationMode") else "NonLinear",
+        scoring = BeamConfig.FTM.Scoring(
+          if (c.hasPathOrNull("scoring")) c.getConfig("scoring")
+          else com.typesafe.config.ConfigFactory.parseString("scoring{}")
+        ),
+        withinDayChargingReplanning = c.hasPathOrNull("withinDayChargingReplanning") && c.getBoolean("withinDayChargingReplanning"),  // def: false
+        generateDummyActivitiesAtEndOfDay = c.hasPathOrNull("generateDummyActivitiesAtEndOfDay") && c.getBoolean("generateDummyActivitiesAtEndOfDay")  // def: false
+      )
+    }
+  }
+
   def apply(c: com.typesafe.config.Config): BeamConfig = {
     BeamConfig(
       beam = BeamConfig.Beam(
@@ -3642,6 +3686,10 @@ object BeamConfig {
       matsim = BeamConfig.Matsim(
         if (c.hasPathOrNull("matsim")) c.getConfig("matsim")
         else com.typesafe.config.ConfigFactory.parseString("matsim{}")
+      ),
+      ftm = BeamConfig.FTM(
+        if (c.hasPathOrNull("ftm")) c.getConfig("ftm")
+        else com.typesafe.config.ConfigFactory.parseString("ftm{}")
       )
     )
   }

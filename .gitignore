@@ -55,3 +55,6 @@ src/main/scala/beam/sandbox
 test/scala/beam/sandbox
 log-path_IS_UNDEFINED/
 .Rproj.user
+test/input/munich-simple/conversion-input/mito_assignment.50.plans*
+test/input/munich-simple/conversion-input/*.osm
+venv/

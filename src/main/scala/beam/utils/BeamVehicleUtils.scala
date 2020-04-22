@@ -107,7 +107,9 @@ object BeamVehicleUtils {
           primaryVehicleEnergyFile,
           secondaryVehicleEnergyFile,
           sampleProbabilityWithinCategory,
-          sampleProbabilityString
+          sampleProbabilityString,
+          10,
+          "NonLinear"
         )
         z += ((vehicleTypeId, bvt))
     }.toMap

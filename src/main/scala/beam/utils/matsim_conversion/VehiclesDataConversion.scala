@@ -254,7 +254,7 @@ object VehiclesDataConversion extends App {
   def generateVehiclesDataFromPersons(persons: NodeSeq, conversionConfig: ConversionConfig): Seq[Seq[String]] = {
     val vehicles = persons.zipWithIndex.map {
       case (_, index) =>
-        Seq(s"${index + 1}", "CAR")
+        Seq(s"${index + 1}", "BEV")
     }
     val beamVehiclesPath = conversionConfig.scenarioDirectory + "/vehicles.csv"
     writeCsvFile(beamVehiclesPath, vehicles, beamVehicleTitles)

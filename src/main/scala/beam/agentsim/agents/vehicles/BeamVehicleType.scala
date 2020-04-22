@@ -26,7 +26,9 @@ case class BeamVehicleType(
   primaryVehicleEnergyFile: Option[String] = None,
   secondaryVehicleEnergyFile: Option[String] = None,
   sampleProbabilityWithinCategory: Double = 1.0,
-  sampleProbabilityString: Option[String] = None
+  sampleProbabilityString: Option[String] = None,
+  chargingCalculationStepSize: Int,
+  chargingCalculationMode: String
 ) {
 
   def isEV: Boolean = {

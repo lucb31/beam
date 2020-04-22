@@ -48,7 +48,7 @@ object Reader {
     val personsEvents = beamEventsFilter.personsEvents
 
     Console.println("fixing overlapped events ...")
-    val progress = new ConsoleProgress("events fixed", vehiclesTrips.size + personsTrips.size, 34)
+    val progress = new ConsoleProgress("events fixed", Math.max(vehiclesTrips.size + personsTrips.size, 100), 34)
 
     if (vehiclesTrips.nonEmpty)
       vehiclesTrips.foreach(trip => {
@@ -222,7 +222,7 @@ object Reader {
     }
 
     Console.println(s"transforming ${vehiclesTrips.size} trips into MATSIM format ...")
-    val progress = new ConsoleProgress("trips transformed", vehiclesTrips.size, 17)
+    val progress = new ConsoleProgress("trips transformed", Math.max(vehiclesTrips.size, 100), 17)
 
     val viaEventsCollector =
       vehiclesTrips.foldLeft(ViaEventsCollector(vehicleId, vehicleType))((acc, trip) => {
