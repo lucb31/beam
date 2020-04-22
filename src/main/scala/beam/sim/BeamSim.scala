@@ -232,7 +232,7 @@ class BeamSim @Inject()(
       else {
         vehicle.initializeFuelLevels(Some(beamServices.beamConfig.beam.agentsim.agents.vehicles.meanPrivateVehicleStartingSOC))
       }
-      vehicle.currentIteration = iterationNumber
+      vehicle.setCurrentIteration(iterationNumber)
     })
 
     val controllerIO = event.getServices.getControlerIO
