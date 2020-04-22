@@ -237,7 +237,7 @@ class BeamVehicle(
       if (primaryFuelLevelInJoulesInternal < primaryEnergyForFullLeg) {
         if (secondaryFuelLevelInJoulesInternal > 0.0) {
           // Use secondary fuel if possible
-          val (secondaryEnergyForFullLeg, secondaryLoggingData) =*/
+          val (secondaryEnergyForFullLeg, secondaryLoggingData) =
             beamScenario.vehicleEnergy.getFuelConsumptionEnergyInJoulesUsing(
               fuelConsumptionData,
               fallBack = powerTrain.getRateInJoulesPerMeter,
