@@ -7,10 +7,11 @@ import beam.router.model.EmbodiedBeamTrip
 import beam.sim.BeamServices
 import beam.sim.config.BeamConfig
 import beam.sim.population.AttributesOfIndividual
-import org.matsim.api.core.v01.population.{Activity, Person, Plan}
+import ftm.util.PopulationUtil
+import org.matsim.api.core.v01.population.{Activity, Person}
 import org.matsim.core.utils.misc.Time
 
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+import scala.collection.mutable.{ListBuffer}
 
 /**
   * BEAM
@@ -55,13 +56,33 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
       val drivingLegs = trip.legs.filter(_.beamLeg.mode.value == "car")
       var distanceInM: Double = 0.0
       if (drivingLegs.size > 0) {
+        val drivingEndpointLinkId = drivingLegs.last.beamLeg.travelPath.linkIds.last
         val drivingEndPoint = drivingLegs.last.beamLeg.travelPath.endPoint
         val drivingEndPointUtm = this.beamServices.geo.wgs2Utm(drivingEndPoint.loc)
         val activities = PopulationUtil.getActivitiesFromPlan(person.getSelectedPlan)
         if (activities.size >= index + 2) {
           val destinationActivity = activities(index + 1)
-          val destinationActivityLocationUtm = destinationActivity.getCoord
-          distanceInM = this.beamServices.geo.distUTMInMeters(destinationActivityLocationUtm, drivingEndPointUtm)
+          // TODO Cleanup
+          val destinationActivityLocationLinkId = destinationActivity.getLinkId
+          val destinationActivityLocationLink = beamServices.networkHelper.getLink(destinationActivityLocationLinkId.toString.toInt).get
+          val drivingEndPointLink = beamServices.networkHelper.getLink(drivingEndpointLinkId.toString.toInt).get
+          /*
+          val linksConnectByNodeIds =
+            destinationActivityLocationLink.getFromNode.getId.toString == drivingEndPointLink.getToNode.getId.toString ||
+            destinationActivityLocationLink.getToNode.getId.toString == drivingEndPointLink.getFromNode.getId.toString
+
+           */
+          //val id = Id.create(5, classOf[Link])
+          val fromConnectByInLinks = destinationActivityLocationLink.getFromNode.getInLinks.containsKey(drivingEndPointLink.getId)
+          val fromConnectByOutLinks = destinationActivityLocationLink.getFromNode.getOutLinks.containsKey(drivingEndPointLink.getId)
+          val toConnectByInLinks = destinationActivityLocationLink.getToNode.getInLinks.containsKey(drivingEndPointLink.getId)
+          val toConnectByOutLinks = destinationActivityLocationLink.getToNode.getOutLinks.containsKey(drivingEndPointLink.getId)
+          val linksAreConnected = fromConnectByInLinks || fromConnectByOutLinks || toConnectByInLinks || toConnectByOutLinks
+          // Same link is good enough
+          if (drivingEndpointLinkId.toString != destinationActivityLocationLinkId.toString && !linksAreConnected) {
+            val destinationActivityLocationUtm = destinationActivity.getCoord
+            distanceInM = this.beamServices.geo.distUTMInMeters(destinationActivityLocationUtm, drivingEndPointUtm)
+          }
         }
       }
 
