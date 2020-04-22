@@ -52,13 +52,12 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
   ): Double = {
     var totalDistanceToDestinationInM: Double = 0.0
     trips.zipWithIndex foreach {case (trip, index) =>
-      val tripStartTime = trip.legs.head.beamLeg.startTime
       val drivingLegs = trip.legs.filter(_.beamLeg.mode.value == "car")
       var distanceInM: Double = 0.0
       if (drivingLegs.size > 0) {
         val drivingEndPoint = drivingLegs.last.beamLeg.travelPath.endPoint
         val drivingEndPointUtm = this.beamServices.geo.wgs2Utm(drivingEndPoint.loc)
-        val activities = getActivitiesFromPlan(person.getSelectedPlan)
+        val activities = PopulationUtil.getActivitiesFromPlan(person.getSelectedPlan)
         if (activities.size >= index + 2) {
           val destinationActivity = activities(index + 1)
           val destinationActivityLocationUtm = destinationActivity.getCoord
@@ -125,14 +124,4 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     math.max(math.pow(residualUtility, walkingDistance / maxWalkingDistance), residualUtility)
   }
 
-  def getActivitiesFromPlan(plan: Plan): ArrayBuffer[Activity] = {
-    val activities: ArrayBuffer[Activity] = new ArrayBuffer()
-    plan.getPlanElements.forEach {
-      case activity: Activity =>
-        // Ignore dummy activities
-        if (activity.getType != "Dummy")  activities += activity
-      case _ =>
-    }
-    activities
-  }
 }
