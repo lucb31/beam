@@ -204,6 +204,7 @@ class BeamSim @Inject()(
 
     // Generate Dummy activities at the end of the day, if plan ends with home activity
     if (beamServices.beamConfig.ftm.generateDummyActivitiesAtEndOfDay) {
+      val simulationEndTimeInSeconds = Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt
       beamServices.matsimServices.getScenario.getPopulation.getPersons.values.forEach(person => {
         val elements = person.getSelectedPlan.getPlanElements
         val lastActivity = elements.asScala.last.asInstanceOf[Activity]
@@ -212,7 +213,7 @@ class BeamSim @Inject()(
           val dummyActivity = PopulationUtil.cloneActivity(lastActivity)
           dummyActivity.setType("Dummy")
           dummyActivity.setCoord(new Coord(lastActivity.getCoord.getX + 1, lastActivity.getCoord.getY))
-          lastActivity.setEndTime(86400 - 60*10)
+          lastActivity.setEndTime(simulationEndTimeInSeconds - 60*10)
           elements.add(dummyActivity)
         }
       })
