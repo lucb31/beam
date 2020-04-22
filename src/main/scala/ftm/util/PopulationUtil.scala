@@ -118,6 +118,7 @@ object PopulationUtil {
   }
 
   def repeatPersonPlan(plan: Plan, iterations: Int, maxHour: Int): Plan = {
+    val fixedDurationInHours = 3  // TODO Maybe randomize
     val activities: ArrayBuffer[Activity] = new ArrayBuffer()
     val legs: ArrayBuffer[Leg] = new ArrayBuffer()
     plan.getPlanElements.forEach {
@@ -125,15 +126,14 @@ object PopulationUtil {
       case leg: Leg => legs += leg
     }
     val lastActivity = activities(activities.size - 1)
-    /*
-     */
     if (activities(0).getCoord.equals(lastActivity.getCoord)) {
       plan.getPlanElements.remove(lastActivity)
       activities.remove(activities.size - 1)
     }
     else {
+      // Fix plan if it does not end at home
       if (lastActivity.getEndTime < 0)
-        lastActivity.setEndTime(maxHour*3600)
+        lastActivity.setEndTime(activities(activities.size - 2).getEndTime + fixedDurationInHours*3600)
       val toHomeLeg = cloneLeg(legs(0))
       toHomeLeg.setDepartureTime(lastActivity.getEndTime)
       legs += toHomeLeg
