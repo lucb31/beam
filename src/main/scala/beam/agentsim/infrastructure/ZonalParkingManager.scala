@@ -1,12 +1,17 @@
 package beam.agentsim.infrastructure
 
 import scala.util.{Failure, Random, Success, Try}
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import beam.agentsim.Resource.ReleaseParkingStall
 import beam.agentsim.agents.choice.logit.UtilityFunctionOperation
 import beam.agentsim.agents.vehicles.FuelType.Electricity
 import beam.agentsim.infrastructure.charging.ChargingPointType
-import beam.agentsim.infrastructure.parking.ParkingZoneSearch.{ParkingAlternative, ParkingZoneSearchConfiguration, ParkingZoneSearchParams}
+import beam.agentsim.infrastructure.parking.ParkingZoneSearch.{
+  ParkingAlternative,
+  ParkingZoneSearchConfiguration,
+  ParkingZoneSearchParams
+}
 import beam.agentsim.infrastructure.parking._
 import beam.agentsim.infrastructure.taz.{TAZ, TAZTreeMap}
 import beam.sim.common.GeoUtils
@@ -28,7 +33,7 @@ class ZonalParkingManager(
   chargingCalculationStepSize: Int,
   chargingCalculationMode: String
 
-) extends Actor
+) extends beam.utils.CriticalActor
     with ActorLogging {
 
   if (maxSearchRadius < minSearchRadius) {
