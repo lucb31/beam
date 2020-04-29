@@ -34,7 +34,8 @@ object FileUtils extends LazyLogging {
       beamConfig.beam.outputs.addTimestampToOutputDirectory
     )
 
-    val uniqueSuffix = "_" + randomString(suffixLength)
+    //val uniqueSuffix = "_" + randomString(suffixLength)
+    val uniqueSuffix = ""
     val outputDir = Paths
       .get(
         beamConfig.beam.outputs.baseOutputDirectory + File.separator + beamConfig.beam.agentsim.simulationName + optionalSuffix + uniqueSuffix
@@ -55,10 +56,11 @@ object FileUtils extends LazyLogging {
     if (!Files.exists(baseOutputDir)) baseOutputDir.toFile.mkdir()
 
     val optionalSuffix: String = getOptionalOutputPathSuffix(addTimestampToOutputDirectory)
-    val uniqueSuffix = randomString(suffixLength)
+    //val uniqueSuffix = "_" + randomString(suffixLength)
+    val uniqueSuffix = ""
 
     val outputDir = Paths
-      .get(outputDirectoryBasePath + File.separator + simulationName + "_" + optionalSuffix + "_" + uniqueSuffix)
+      .get(outputDirectoryBasePath + File.separator + simulationName + "_" + optionalSuffix + uniqueSuffix)
       .toFile
     outputDir.mkdir()
     outputDir.getAbsolutePath

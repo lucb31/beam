@@ -293,6 +293,7 @@ class BeamVehicle(
 
           }
         }
+      }
     }
     FuelConsumed(
       primaryEnergyConsumed,

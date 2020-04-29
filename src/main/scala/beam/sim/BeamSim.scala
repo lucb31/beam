@@ -22,6 +22,8 @@ import beam.sim.config.{BeamConfig, BeamConfigHolder}
 import beam.router.r5.RouteDumper
 import beam.sim.metrics.SimulationMetricCollector.SimulationTime
 import beam.sim.metrics.{BeamStaticMetricsWriter, Metrics, MetricsSupport}
+import org.matsim.api.core.v01.Coord
+import org.matsim.core.utils.misc.Time
 //import beam.sim.metrics.MetricsPrinter.{Print, Subscribe}
 //import beam.sim.metrics.{MetricsPrinter, MetricsSupport}
 import beam.utils.csv.writers._
@@ -269,7 +271,7 @@ class BeamSim @Inject()(
         val prevSoc = plan.getAttributes.getAttribute("endOfDaySoc").asInstanceOf[Double]
          */
         val socAfterRefueling = vehicle.fuelAfterRefuelSession(Time.parseTime(beamServices.beamScenario.beamConfig.beam.agentsim.endTime).toInt)
-        vehicle.primaryFuelLevelInJoules = socAfterRefueling
+        vehicle.addFuel(socAfterRefueling - vehicle.primaryFuelLevelInJoules)
       }
       else {
         vehicle.initializeFuelLevels(Some(beamServices.beamConfig.beam.agentsim.agents.vehicles.meanPrivateVehicleStartingSOC))
