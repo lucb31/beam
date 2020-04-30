@@ -20,12 +20,11 @@ def mask_munich_road_shape(path_to_munich_shape, path_to_munich_polygon, path_to
 
 ### CONFIG ####
 pd.set_option('display.max_columns', 500)
-plot_unused_cs = False
-plot_heatmap = True
-plot_all_cs = True
 path_to_taz_centers_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-centers.csv"
-#path_to_simulation_run = "/data/lucas/SA/Simulation Runs/history/munich-simple__2020-04-15_10-53-58_10000agents_withinday_inactive/"
-path_to_simulation_run = "/data/lucas/SA/Simulation Runs/munich-simple_72h_10000agents_50iter__2020-04-28_18-46-18/"
+path_to_taz_parking_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-parking.csv"
+path_to_simulation_run = "/data/lucas/SA/Simulation Runs/history/munich-simple__2020-04-15_10-53-58_10000agents_withinday_inactive/"
+output_prefix = '/data/lucas/SA/tmp/13_heatmap_10000agents_24h_iteration'
+#path_to_simulation_run = "/data/lucas/SA/Simulation Runs/munich-simple_72h_10000agents_50iter__2020-04-28_18-46-18/"
 path_to_munich_shape = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/shapefiles/munich_area_hybrid_shape.shp"
 path_to_munich_polygon = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/munich-polygon.geojson"
 path_to_munich_road_masked = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/shapefiles/munich_enclosing_roads_masked.shp"
@@ -40,12 +39,13 @@ iteration_step = 5
 # Load map data
 print("Loading map data...")
 taz_centers = pd.read_csv(path_to_taz_centers_csv)
+taz_parking = pd.read_csv(path_to_taz_parking_csv)
 munich_enclosing_roads_masked = gpd.read_file(path_to_munich_road_masked)
 munich_enclosing_roads_masked.to_crs(crs=crs)
 munich_polygon = gpd.read_file(path_to_munich_polygon)
 munich_polygon.to_crs(crs=crs)
 print("...done")
-scheme = mapclassify.Quantiles([0,350], k=10)
+
 
 def scale_within_boundaries(minval, maxval):
     def scalar(val):
@@ -54,6 +54,9 @@ def scale_within_boundaries(minval, maxval):
         return bin*2 + 5
     return scalar
 
+
+legend_max_val = 0
+plot_dataframes_collection = {}
 taz_geometry = [Point(x, y) for x, y in zip(taz_centers['coord-x'], taz_centers['coord-y'])]
 for iteration in range(iteration_start, iteration_end, iteration_step):
     print('Iteration '+str(iteration))
@@ -68,10 +71,13 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
     sum_df = pd.DataFrame({
         'totalFuel': [0 for i in range(0, len(taz_centers.index))],
         'parkingTaz': taz_centers.taz,
+        'numStalls': taz_parking.numStalls,
         'geometry': taz_geometry
     })
     for group, df in charging_events.groupby("parkingTaz"):
         fuelSum = df['fuel'].sum()
+        # Normalize by number of stalls
+        fuelSum = fuelSum / sum_df.loc[sum_df['parkingTaz'] == group, 'numStalls']
         sum_df.loc[sum_df['parkingTaz'] == group, 'totalFuel'] = fuelSum
     geo_df = gpd.GeoDataFrame(sum_df, crs=taz_centers_crs)
     geo_df = geo_df.to_crs(crs)
@@ -84,6 +90,15 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
     geo_df_masked = geo_df[mask]
     print("...location data done")
 
+    if geo_df_masked.totalFuel.max() > legend_max_val:
+        legend_max_val = geo_df_masked.totalFuel.max()
+    geo_df_masked.to_file(output_prefix+str(iteration)+'.shp')
+    plot_dataframes_collection[iteration] = geo_df_masked
+
+# Get max energy
+scheme = mapclassify.Quantiles([0, legend_max_val], k=10)
+for iteration in range(iteration_start, iteration_end, iteration_step):
+    geo_df_masked = plot_dataframes_collection[iteration]
     # Plot points, polygon border shape and road network
     if geo_df_masked.totalFuel.max() > 0:
         ax = geoplot.pointplot(
@@ -102,7 +117,7 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
     munich_enclosing_roads_masked.plot(ax=ax, alpha=0.4, color='grey')
     plot_title = 'Übertragene Energie pro Ladestation (Iteration '+str(iteration)+')'
     plt.title(plot_title)
-    plt.savefig('/data/lucas/SA/tmp/13_heatmap_iteration'+str(iteration)+'.png')
+    plt.savefig(output_prefix+str(iteration)+'.png')
 
 plt.show()
 
