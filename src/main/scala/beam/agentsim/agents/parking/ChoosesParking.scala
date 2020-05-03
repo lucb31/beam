@@ -57,17 +57,21 @@ trait ChoosesParking extends {
 
       val remainingTripData = calculateRemainingTripData(personData)
 
-      var allowCharging = false
+      var allowCharging = true
       var forceCharging = false
+      if (beamServices.beamConfig.ftm.chargingReplanning) {
+        allowCharging = false
+        forceCharging = false
+        val chargingSeq = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
+        if (chargingSeq.size < personData.currentActivityIndex + 1) {
+          logger.error("Charging Sequence {} is out of bounds for activity {}. ", chargingSeq.toString(), currentActivity(personData))
+        }
+        else if (chargingSeq(personData.currentActivityIndex)) {
+          allowCharging = true
+          forceCharging = true
+        }
+      }
 
-      val chargingSeq = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
-      if (chargingSeq.size < personData.currentActivityIndex + 1) {
-        logger.error("Charging Sequence {} is out of bounds for activity {}. ", chargingSeq.toString(), currentActivity(personData))
-      }
-      else if (chargingSeq(personData.currentActivityIndex)) {
-        allowCharging = true
-        forceCharging = true
-      }
 
       parkingManager ! ParkingInquiry(
         destinationUtm,

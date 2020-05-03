@@ -3643,7 +3643,8 @@ object BeamConfig {
                 chargingCalculationMode: java.lang.String,
                 scoring: FTM.Scoring,
                 withinDayChargingReplanning: scala.Boolean,
-                generateDummyActivitiesAtEndOfDay: scala.Boolean
+                generateDummyActivitiesAtEndOfDay: scala.Boolean,
+                chargingReplanning: scala.Boolean
                 )
 
   object FTM {
@@ -3673,7 +3674,8 @@ object BeamConfig {
           else com.typesafe.config.ConfigFactory.parseString("scoring{}")
         ),
         withinDayChargingReplanning = c.hasPathOrNull("withinDayChargingReplanning") && c.getBoolean("withinDayChargingReplanning"),  // def: false
-        generateDummyActivitiesAtEndOfDay = c.hasPathOrNull("generateDummyActivitiesAtEndOfDay") && c.getBoolean("generateDummyActivitiesAtEndOfDay")  // def: false
+        generateDummyActivitiesAtEndOfDay = c.hasPathOrNull("generateDummyActivitiesAtEndOfDay") && c.getBoolean("generateDummyActivitiesAtEndOfDay"),  // def: false
+        chargingReplanning = !c.hasPathOrNull("chargingReplanning") || c.getBoolean("chargingReplanning")  // def: true
       )
     }
   }
