@@ -3,15 +3,34 @@ import pandas as pd
 import geopandas
 import csv
 
+###### CONFIG #######
 input_filename = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/munich-enclosing-counties-chargers.xml"
+taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers.csv"
+taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking.csv"
+taz_id_offset = 100
+taz_default_area = 5000
+parking_default_type = 'Public'
+parking_default_pricing_model = 'FlatFee'
+parking_default_fee = 100
+parking_default_reserved = 'Any'
+parking_default_num_stalls = 2
+parking_default_power = 22
+max_num_stalls = 8
+regular_parking_taz = 1
+regular_parking_x = 4466208
+regular_parking_y = 5334723
+regular_parking_area = 60000
+
+# All chargers are Level 2 AC
+#####################
+
+# parse XML
 tree = ET.parse(input_filename)
 root = tree.getroot()
 df = pd.DataFrame(columns=['latitude', 'longitude', 'numStalls', 'power', 'x', 'y'])
-
-# parse XML
 for node in root:
     is_charging_station = False
-    lat, lon, power, num_stalls = 0, 0, 22, 2
+    lat, lon, power, num_stalls = 0, 0, parking_default_power, parking_default_num_stalls
 
     # Get position
     if 'lat' in node.attrib:
@@ -48,20 +67,8 @@ print("We found ", len(df.index)," charging stations with a total capacity of ",
 gdf = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df.longitude, df.latitude))
 gdf.crs = 'epsg:4326'
 gdf = gdf.to_crs('epsg:31468')
-#df.x = gdf.geometry.x
-#df.y = gdf.geometry.y
 
 # Convert to csv
-# Config
-taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers.csv"
-taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking.csv"
-taz_id_offset = 100
-taz_default_area = 5000
-parking_default_type = 'Public'
-parking_default_pricing_model = 'FlatFee'
-parking_default_fee = 100
-parking_default_reserved = 'Any'
-
 charging_types = ["Level2(%s|AC)" % (power) for power in zip(df.power)]
 centers_df = pd.DataFrame({
     'taz': df.index + taz_id_offset,
