@@ -5,6 +5,8 @@ from shapely.geometry import Point
 import geoplot
 from os import path
 import mapclassify
+import contextily as ctx
+from matplotlib import cm
 
 from python.ftm.plot_events import get_refuel_events_from_events_csv
 
@@ -18,12 +20,26 @@ def mask_munich_road_shape(path_to_munich_shape, path_to_munich_polygon, path_to
     munich_enclosing_roads_masked[['osm_id', 'name', 'z_order', 'geometry']].to_file(path_to_munich_road_masked)
 
 
+def scale_within_boundaries(minval, maxval):
+    def scalar(val):
+        new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
+        bin = new_scheme.yb[0]
+        return bin*2 + 5
+    return scalar
+
+
+def scale_by_scheme(val, scheme):
+    new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
+    bin = new_scheme.yb[0]
+    return (bin*2 + 5)*6
+
+
 ### CONFIG ####
 pd.set_option('display.max_columns', 500)
 path_to_taz_centers_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-centers.csv"
 path_to_taz_parking_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-parking.csv"
 path_to_simulation_run = "/data/lucas/SA/Simulation Runs/history/munich-simple__2020-04-15_10-53-58_10000agents_withinday_inactive/"
-output_prefix = '/data/lucas/SA/tmp/13_heatmap_10000agents_24h_iteration'
+output_prefix = '/data/lucas/SA/tmp/14_heatmap_10000agents_24h_iteration'
 #path_to_simulation_run = "/data/lucas/SA/Simulation Runs/munich-simple_72h_10000agents_50iter__2020-04-28_18-46-18/"
 path_to_munich_shape = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/shapefiles/munich_area_hybrid_shape.shp"
 path_to_munich_polygon = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/munich-polygon.geojson"
@@ -33,6 +49,9 @@ taz_centers_crs = "EPSG:31468"
 iteration_start = 0
 iteration_end = 23
 iteration_step = 5
+cmap_name = 'inferno'
+color_TUM_BLUE = '#0065BD'
+plot_only_chargers = False
 ### END CONFIG ####
 
 
@@ -46,13 +65,6 @@ munich_polygon = gpd.read_file(path_to_munich_polygon)
 munich_polygon.to_crs(crs=crs)
 print("...done")
 
-
-def scale_within_boundaries(minval, maxval):
-    def scalar(val):
-        new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
-        bin = new_scheme.yb[0]
-        return bin*2 + 5
-    return scalar
 
 
 legend_max_val = 0
@@ -94,30 +106,41 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
         legend_max_val = geo_df_masked.totalFuel.max()
     geo_df_masked.to_file(output_prefix+str(iteration)+'.shp')
     plot_dataframes_collection[iteration] = geo_df_masked
-
 # Get max energy
 scheme = mapclassify.Quantiles([0, legend_max_val], k=10)
+
+# Plot points and basemap
 for iteration in range(iteration_start, iteration_end, iteration_step):
     geo_df_masked = plot_dataframes_collection[iteration]
-    # Plot points, polygon border shape and road network
-    if geo_df_masked.totalFuel.max() > 0:
-        ax = geoplot.pointplot(
-            geo_df_masked,
-            hue='totalFuel', scheme=scheme, cmap='inferno',
-            legend=True, legend_var='hue',
-            scale='totalFuel', limits=(5, 20), scale_func=scale_within_boundaries,
-            figsize=(12, 6))
+    geo_df_masked = geo_df_masked.to_crs(epsg=3857)
+    chargers = geo_df_masked.centroid.geometry.values
+    x_c = [c.x for c in chargers]
+    y_c = [c.y for c in chargers]
+    sizes = [scale_by_scheme(totalFuel, scheme) for totalFuel in zip(geo_df_masked.totalFuel)]
+    values = [totalFuel for totalFuel in zip(geo_df_masked.totalFuel)]
+
+    fig, ax = plt.subplots(figsize=(12, 9))
+    if plot_only_chargers and iteration == 0:
+        # Hide Colorbar
+        ax.scatter(x_c, y_c, marker="o", c=color_TUM_BLUE, s=sizes)
+        ctx.add_basemap(ax)
     else:
-        ax = geoplot.pointplot(
-            geo_df_masked,
-            color='black',
-            #legend=True, hue='totalFuel', scale='totalFuel', limits=(5, 20), cmap='inferno', legend_var='hue',
-            figsize=(12, 6))
-    geoplot.polyplot(munich_polygon, ax=ax, zorder=1)
-    munich_enclosing_roads_masked.plot(ax=ax, alpha=0.4, color='grey')
-    plot_title = 'Übertragene Energie pro Ladestation (Iteration '+str(iteration)+')'
-    plt.title(plot_title)
-    plt.savefig(output_prefix+str(iteration)+'.png')
+        ax.scatter(x_c, y_c, marker="o", c=values, cmap=cmap_name, s=sizes)
+        ctx.add_basemap(ax)
+
+        # Add Colorbar
+        sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=plt.Normalize(vmin=0, vmax=legend_max_val))
+        sm.set_array([])
+        cbar = plt.colorbar(sm, orientation="horizontal", pad=0.02, aspect=40)
+        cbar.set_label("Übertragene Energie in kWh")
+        cbar.orientation = "horizontal"
+
+        plot_title = 'Übertragene Energie pro Ladepunkt (Iteration '+str(iteration)+')'
+        plt.title(plot_title)
+    plt.xticks([], [])
+    plt.yticks([], [])
+    ax.set_axis_off()
+    plt.savefig(output_prefix+str(iteration)+'.png', dpi=300, bbox_inches='tight', pad_inches=0)
 
 plt.show()
 
