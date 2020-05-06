@@ -42,7 +42,7 @@ for node in root:
         tag_value = tag.attrib['v']
         if tag_type == 'capacity':
             try:
-                num_stalls += int(tag_value)
+                num_stalls = int(tag_value)
             except:
                 print("Capacity: ", tag_value)
         if "socket:" in str(tag_type):
@@ -50,6 +50,8 @@ for node in root:
         if tag_type == 'amenity' and tag_value == 'charging_station':
             is_charging_station = True
 
+    num_stalls = min(num_stalls, max_num_stalls)
+    # Validate
     if is_charging_station and lat > 0 and lon > 0:
         # Add to dataframe
         df = df.append({
@@ -85,15 +87,26 @@ parking_df = pd.DataFrame({
     'feeInCents': parking_default_fee,
     'reservedFor': parking_default_reserved
 })
+
+# Add regular parking taz
+centers_df = centers_df.append(pd.DataFrame({
+    'taz': [regular_parking_taz],
+    'coord-x': [regular_parking_x],
+    'coord-y': [regular_parking_y],
+    'area': [regular_parking_area]
+}), ignore_index=True)
+parking_df = parking_df.append(pd.DataFrame({
+    'taz': [regular_parking_taz],
+    'parkingType': ['Public'],
+    'pricingModel': ['FlatFee'],
+    'chargingType': ['None'],
+    'numStalls': [1000000],
+    'feeInCents': [0],
+    'reservedFor': ['Any']
+}), ignore_index=True)
+
 with open(taz_centers_path, mode='w') as taz_centers_file:
     centers_df.to_csv(taz_centers_file, mode='a', header=taz_centers_file.tell() == 0, index=False)
 
 with open(taz_parking_path, mode='w') as taz_parking_file:
     parking_df.to_csv(taz_parking_file, mode='a', header=taz_parking_file.tell() == 0, index=False)
-"""
-        taz_parking_writer = csv.writer(taz_parking_file, delimiter=',')
-        for x, y, num_stalls, power in zip(df.x, df.y, df.numStalls, df.power):
-            taz_centers_writer.writerow([taz_id_iterator, x, y, taz_default_area])
-            taz_parking_writer.writerow([taz_id_iterator, parking_default_type, parking_default_pricing_model, 'Level2('+str(power)+'|AC)', num_stalls, parking_default_fee, parking_default_reserved])
-            taz_id_iterator += 1
-"""
