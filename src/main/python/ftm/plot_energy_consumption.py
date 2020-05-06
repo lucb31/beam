@@ -12,6 +12,22 @@ from python.ftm.plot_events import get_driving_events_from_events_csv, \
 from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, seconds_to_time_string
 
 
+
+########## CONFIG #############
+pd.set_option('display.max_columns', 500)
+baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
+baseDir = "/data/lucas/SA/Simulation Runs/"
+latest_run = get_latest_run(baseDir)
+latest_run = "munich-simple_debug_consumption__2020-05-05_09-07-52"
+run_dir = get_run_dir(baseDir, latest_run)
+vehicle_id = 356
+last_iteration = 1
+iteration_stepsize = 1
+max_hour = 72
+plot_scoring_means = False
+plot_multiple_vehicles = True
+
+
 def plotConsumptionOverLength(df, plotSpeedBasedConsumption, plotLengthBasedConsumption):
     # Plot Data
     fig, ax = plt.subplots(2, 1)
@@ -417,20 +433,8 @@ def plot_soc_dt(iteration, row, figure, vehicle_id, ytitle, plot_events=False):
     else:
         print("ERR: Empty dataframe on iteration " + str(iteration))
 
-pd.set_option('display.max_columns', 500)
-baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
-latest_run = get_latest_run(baseDir)
-#latest_run = "munich-simple__2020-04-14_11-46-01__500_agents_20_iters_scoring_analysis"
-run_dir = get_run_dir(baseDir, latest_run)
-vehicle_id = 0
-last_iteration = 50
-iteration_stepsize = 25
-max_hour = 72
-plot_scoring_means = False
-plot_multiple_vehicles = True
 num_plot_rows = int(last_iteration / 2) + 1
 num_plot_cols = last_iteration % 2 + 1
-
 
 # Plot setup
 xlabel = 'Time of day in h'
@@ -533,7 +537,3 @@ df_plans_vehicle = filter_plans_by_vehicle_id_from_plans_csv(run_dir + "populati
 #print(get_vehicle_id_from_population_csv(run_dir + "population.csv.gz", 1730289))
 #print(df_plans_vehicle.head(5))
 #df_plans_person = filter_plans_by_person_id_from_plans_csv(get_iteration_dir(run_dir, last_iteration) + "plans.csv.gz", 2387918)
-filter_plans_by_vehicle_id(
-    "/home/lucas/IdeaProjects/beam/test/input/munich-simple/households.xml",
-    get_iteration_dir(run_dir, 3) + "plans.xml.gz",
-    vehicle_id)

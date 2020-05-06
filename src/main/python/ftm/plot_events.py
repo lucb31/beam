@@ -87,6 +87,8 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
 
     if df is None:
         df = get_all_events_from_events_csv(path_to_events_csv)
+
+    print("Parsing refuel events from event.csv...")
     simulation_end_time = df.time.max()
     df_refuel = df[df['type'] == "RefuelSessionEvent"]
     df_refuel = df_refuel.reset_index(drop=True)
