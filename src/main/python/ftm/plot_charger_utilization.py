@@ -2,8 +2,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from python.ftm.plot_events import get_refuel_events_from_events_csv, get_total_walking_distances_from_events_csv, \
-    get_parking_events_from_events_csv
+from python.ftm.analyze_events import get_refuel_events_from_events_csv, get_total_walking_distances_from_events_csv, \
+    get_parking_events_from_events_csv, get_all_events_from_events_csv
 from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, get_last_iteration
 
 

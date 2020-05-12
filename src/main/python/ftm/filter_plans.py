@@ -3,7 +3,7 @@ import gzip
 import pandas as pd
 from os import path
 
-from python.ftm.plot_events import df_columns_to_numeric
+from python.ftm.analyze_events import df_columns_to_numeric
 
 
 def filter_plans_by_vehicle_id_from_plans_csv(path_to_population_csv, path_to_plans_csv, vehicle_id):

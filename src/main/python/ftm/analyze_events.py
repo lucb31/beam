@@ -94,13 +94,20 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
     df_refuel = df_refuel.reset_index(drop=True)
     df_refuel = df_refuel.assign(fuelAfterCharging=pd.Series(np.zeros(len(df_refuel.index))))
 
+    # Lookup fuel after Charging in PlugoutEvents
     # Get fuel after charging
     df_plug_out = df[df['type'] == "ChargingPlugOutEvent"]
     for fuelAfterCharging, time, vehicle in zip(df_plug_out['primaryFuelLevel'], df_plug_out['time'],  df_plug_out['vehicle']):
         df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
 
+    """
     # Look for missing PlugOutEvents
     if add_missing_refuel_events:
+        # Get fuel after charging
+        df_plug_out = df[df['type'] == "ChargingPlugOutEvent"]
+        for fuelAfterCharging, time, vehicle in zip(df_plug_out['primaryFuelLevel'], df_plug_out['time'],  df_plug_out['vehicle']):
+            df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
+
         df_plug_in = df[df['type'] == "ChargingPlugInEvent"]
         for index, plug_in_event in df_plug_in.iterrows():
             df_plug_out_filtered_by_vehicle = df_plug_out[df_plug_out.vehicle.eq(plug_in_event['vehicle'])]
@@ -139,7 +146,7 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
                     'duration': charging_duration,
                     'fuelAfterCharging': fuel_after_charging
                 }, ignore_index=True)
-
+    """
     # Save analysis data to csv file
     if path_to_charging_events_csv != "" and not path.exists(path_to_charging_events_csv):
         with open(path_to_charging_events_csv, mode='w') as charging_events_file:
@@ -168,7 +175,7 @@ def get_driving_events_from_events_csv(path_to_events_csv="", df=None):
         df = get_all_events_from_events_csv(path_to_events_csv)
     df_events = df[df['mode'].eq("car") & df['vehicle'].notnull()]
     df_events = df_events.reset_index(drop=True)
-    return df_columns_to_numeric(df_events, ['vehicle', 'driver', 'primaryFuelLevel'])
+    return df_columns_to_numeric(df_events, ['vehicle', 'driver', 'primaryFuelLevel', 'primaryFuel'])
 
 
 def get_walking_events_from_events_csv(path_to_events_csv="", df=None):

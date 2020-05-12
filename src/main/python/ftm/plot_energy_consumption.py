@@ -6,7 +6,7 @@ from random import randrange
 
 from python.ftm.filter_plans import filter_plans_by_vehicle_id, filter_plans_by_vehicle_id_from_plans_csv, \
     filter_plans_by_person_id_from_plans_csv, get_vehicle_id_from_population_csv
-from python.ftm.plot_events import get_driving_events_from_events_csv, \
+from python.ftm.analyze_events import get_driving_events_from_events_csv, \
     get_walking_events_from_events_csv, get_parking_events_from_events_csv, get_all_events_from_events_csv, \
     get_refuel_events_from_events_csv, get_charging_events_from_events_csv
 from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, seconds_to_time_string

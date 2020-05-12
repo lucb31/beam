@@ -9,7 +9,7 @@ import contextily as ctx
 from matplotlib import cm
 import numpy as np
 
-from python.ftm.plot_events import get_refuel_events_from_events_csv
+from python.ftm.analyze_events import get_refuel_events_from_events_csv
 
 def mask_munich_road_shape(path_to_munich_shape, path_to_munich_polygon, path_to_munich_road_masked):
     munich_enclosing_roads = gpd.read_file(path_to_munich_shape)
