@@ -55,6 +55,7 @@ color_TUM_BLUE = '#0065BD'
 plot_only_chargers = False
 plot_total_fuel = True
 plot_avg_duration = True
+plot_avg_fuel = True
 ### END CONFIG ####
 
 
@@ -73,6 +74,7 @@ print("...done")
 
 total_fuel_max = 0
 avg_duration_max = 0
+avg_fuel_max = 0
 plot_dataframes_collection = {}
 for iteration in range(iteration_start, iteration_end, iteration_step):
     print('Iteration '+str(iteration))
@@ -104,10 +106,12 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
         sum_df.loc[sum_df['parkingTaz'] == group, 'totalDuration'] = duration_sum
         sum_df.loc[sum_df['parkingTaz'] == group, 'eventCount'] = len(df.index)
         sum_df.loc[sum_df['parkingTaz'] == group, 'avgDuration'] = duration_sum / len(df.index)
+        sum_df.loc[sum_df['parkingTaz'] == group, 'avgFuel'] = fuelSum / len(df.index)
     geo_df = gpd.GeoDataFrame(sum_df, crs=taz_centers_crs)
     geo_df = geo_df.to_crs(crs)
     # Unit conversions
     geo_df['totalFuel'] = geo_df['totalFuel'] / 3.6e6       # Joule to kWh
+    geo_df['avgFuel'] = geo_df['avgFuel'] / 3.6e6       # Joule to kWh
     geo_df['avgDuration'] = geo_df['avgDuration'] / 60       # seconds to minutes
     print("...done")
 
@@ -117,10 +121,15 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
     geo_df_masked = geo_df[mask]
     print("...location data done")
 
+    # Update max values
     if geo_df_masked.totalFuel.max() > total_fuel_max:
         total_fuel_max = geo_df_masked.totalFuel.max()
     if geo_df_masked.avgDuration.max() > avg_duration_max:
         avg_duration_max = geo_df_masked.avgDuration.max()
+    if geo_df_masked.avgFuel.max() > avg_fuel_max:
+        avg_fuel_max = geo_df_masked.avgFuel.max()
+
+    # Save to shapefile and dataframe
     geo_df_masked.to_file(output_prefix+str(iteration)+'.shp')
     plot_dataframes_collection[iteration] = geo_df_masked
 
@@ -158,6 +167,7 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
         plt.yticks([], [])
         ax.set_axis_off()
         plt.savefig(output_prefix+str(iteration)+'_totalFuel.png', dpi=300, bbox_inches='tight', pad_inches=0)
+
     if plot_avg_duration:
         scheme = mapclassify.Quantiles([0, avg_duration_max], k=10)
         values = [avg_duration for avg_duration in zip(geo_df_masked.avgDuration)]
@@ -180,6 +190,29 @@ for iteration in range(iteration_start, iteration_end, iteration_step):
         plt.yticks([], [])
         ax.set_axis_off()
         plt.savefig(output_prefix+str(iteration)+'_avgDuration.png', dpi=300, bbox_inches='tight', pad_inches=0)
+
+    if plot_avg_fuel:
+        scheme = mapclassify.Quantiles([0, avg_fuel_max], k=10)
+        values = [val for val in zip(geo_df_masked.avgFuel)]
+        sizes = [scale_by_scheme(value, scheme) for value in values]
+
+        fig, ax = plt.subplots(figsize=(12, 9))
+        ax.scatter(x_c, y_c, marker="o", c=values, cmap=cmap_name, s=sizes)
+        ctx.add_basemap(ax)
+
+        # Add Colorbar
+        sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=plt.Normalize(vmin=0, vmax=avg_fuel_max))
+        sm.set_array([])
+        cbar = plt.colorbar(sm, orientation="horizontal", pad=0.02, aspect=40)
+        cbar.set_label("Durchschnittliche Energiemenge in kWh ")
+        cbar.orientation = "horizontal"
+
+        plot_title = 'Durchschnittliche übertragene Energiemenge eines Ladevorgangs (Iteration '+str(iteration)+')'
+        plt.title(plot_title)
+        plt.xticks([], [])
+        plt.yticks([], [])
+        ax.set_axis_off()
+        plt.savefig(output_prefix+str(iteration)+'_avgFuel.png', dpi=300, bbox_inches='tight', pad_inches=0)
 
 plt.show()
 
