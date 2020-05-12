@@ -1,6 +1,7 @@
 import scandir
 
 
+colors=['#0065BD', '#003359', '#98C6EA', '#7F7F7F', '#CCCCCC', '#A2AD00', '#E37222']
 def get_working_dir(base_dir, iteration):
     return get_iteration_dir(get_run_dir(base_dir), iteration)
 
