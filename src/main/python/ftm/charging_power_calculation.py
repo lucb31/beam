@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from python.ftm.util import colors
+
 
 def calc_avg_charging_power_numeric(start_energy_in_J, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit,
                                     stepSize, return_plot_values=False):
@@ -43,44 +45,46 @@ def plot_charging_power_over_energy(e_max_in_j, p_max_in_kw):
     plt.show()
 
 
-"""
-E_max_in_J = 2.7e8
-P_max_in_kW = 7.3
-# Plot difference between linear and nonlinear charging
-currentEnergyLevelInJoule = 2.608425116068747E8
-currentEnergyLevelInJoule = 0.608425116068747E8
-batteryCapacityInJoule = 2.699999827E8
-chargingLimit = batteryCapacityInJoule
-maxChargingPowerInKw = 7.2
-stepSize = 100
-fig, ax = plt.subplots()
+def main():
+    E_max_in_J = 2.7e8
+    # Plot difference between linear and nonlinear charging
+    currentEnergyLevelInJoule = 2.608425116068747E8
+    currentEnergyLevelInJoule = 0.608425116068747E8
+    batteryCapacityInJoule = 2.699999827E8
+    chargingLimit = batteryCapacityInJoule
+    maxChargingPowerInKw = 22
+    stepSize = 1000
+    smallStepSize = 10
+    fig_path = '/home/lucas/IdeaProjects/beam/output/charging_power_calculation_comparison.png'
+    fig, ax = plt.subplots()
 
-(avgChargingPowerInKw, xvals, yvals) = calc_avg_charging_power_numeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit, stepSize)
-sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / avgChargingPowerInKw * 3600.0
-print(sessionLengthInS)
-ax.plot(xvals/3600, yvals/3.6e6, label='NonLinear: Stepsize '+str(stepSize))
-ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='NonLinear avg: Stepsize '+str(stepSize))
+    (avgChargingPowerInKw, xvals, yvals) = calc_avg_charging_power_numeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit, stepSize, True)
+    sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / avgChargingPowerInKw * 3600.0
+    print(sessionLengthInS)
+    ax.plot(xvals/3600, yvals/3.6e6, label='NonLinear: Stepsize '+str(stepSize), c=colors[0])
+    ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='NonLinear avg: Stepsize '+str(stepSize))
 
-smallStepSize = 1
-(avgChargingPowerInKwSmallStep, xvals, yvals) = calc_avg_charging_power_numeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit, smallStepSize)
-sessionLengthInSSmallStep = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / avgChargingPowerInKwSmallStep * 3600.0
-ax.plot(xvals/3600, yvals/3.6e6, label='NonLinear: Stepsize '+str(smallStepSize))
-ax.plot([0, sessionLengthInSSmallStep/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='NonLinear avg: Stepsize '+str(smallStepSize))
-print("Charging power stepsize ", stepSize, ":", avgChargingPowerInKw, ", stepSize ", smallStepSize, ":", avgChargingPowerInKwSmallStep, "Difference: ", avgChargingPowerInKw - avgChargingPowerInKwSmallStep, "Time diff:", sessionLengthInS -sessionLengthInSSmallStep)
+    (avgChargingPowerInKwSmallStep, xvals, yvals) = calc_avg_charging_power_numeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimit, smallStepSize, True)
+    sessionLengthInSSmallStep = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / avgChargingPowerInKwSmallStep * 3600.0
+    ax.plot(xvals/3600, yvals/3.6e6, label='Numerische Lösung', c=colors[0])
+    ax.plot([0, sessionLengthInSSmallStep/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Numerische Lösung, Durchschnitt', c=colors[0])
+    #print("Charging power stepsize ", stepSize, ":", avgChargingPowerInKw, ", stepSize ", smallStepSize, ":", avgChargingPowerInKwSmallStep, "Difference: ", avgChargingPowerInKw - avgChargingPowerInKwSmallStep, "Time diff:", sessionLengthInS -sessionLengthInSSmallStep)
 
-# Linear soc dep
-chargingPower = (0.6 * 0.05**(currentEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
-sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / chargingPower * 3600.0
-ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Linear SOC dependent')
+    # Linear soc dep
+    chargingPower = (0.6 * 0.05**(currentEnergyLevelInJoule / batteryCapacityInJoule) + 0.4) * maxChargingPowerInKw
+    sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / chargingPower * 3600.0
+    ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Abhängig vom SOC', c=colors[1])
 
-# Linear
-chargingPower = maxChargingPowerInKw
-sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / chargingPower * 3600.0
-ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Linear SOC independent')
+    # Linear
+    chargingPower = maxChargingPowerInKw
+    sessionLengthInS = (chargingLimit - currentEnergyLevelInJoule) / 3.6e6 / chargingPower * 3600.0
+    ax.plot([0, sessionLengthInS/3600], [currentEnergyLevelInJoule/3.6e6, chargingLimit/3.6e6], label='Unabhängig vom SOC', c=colors[2])
+    print('StartSc: ', currentEnergyLevelInJoule / 3.6e6 , ', endSoc: ', batteryCapacityInJoule/3.6e6)
 
-ax.set_title('SOC during charging for different levels of detail')
-ax.set_xlabel('Charging duration in h')
-ax.set_ylabel('SOC in kWh')
-ax.legend()
-plt.show()
-"""
+    #ax.set_title('SOC during charging for different levels of detail')
+    ax.set_xlabel('Zeit in h')
+    ax.set_ylabel('Ladezustand in kWh')
+    ax.set_ylim([0,80])
+    ax.legend()
+    plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
+    plt.show()
