@@ -89,7 +89,6 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
         df = get_all_events_from_events_csv(path_to_events_csv)
 
     print("Parsing refuel events from event.csv...")
-    simulation_end_time = df.time.max()
     df_refuel = df[df['type'] == "RefuelSessionEvent"]
     df_refuel = df_refuel.reset_index(drop=True)
     df_refuel = df_refuel.assign(fuelAfterCharging=pd.Series(np.zeros(len(df_refuel.index))))
@@ -101,6 +100,7 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
         df_refuel.loc[df_refuel.time.eq(time) & df_refuel.vehicle.eq(vehicle), 'fuelAfterCharging'] = fuelAfterCharging
 
     """
+    simulation_end_time = df.time.max()
     # Look for missing PlugOutEvents
     if add_missing_refuel_events:
         # Get fuel after charging
@@ -149,9 +149,15 @@ def get_refuel_events_from_events_csv(path_to_events_csv="", df=None, add_missin
     """
     # Save analysis data to csv file
     if path_to_charging_events_csv != "" and not path.exists(path_to_charging_events_csv):
-        with open(path_to_charging_events_csv, mode='w') as charging_events_file:
-            df_refuel.to_csv(charging_events_file, mode='w', header=True, index=False)
+        save_refuel_events_to_charging_events_csv(path_to_events_csv, df_refuel)
+
     return df_columns_to_numeric(df_refuel, ['vehicle', 'fuel'])
+
+
+def save_refuel_events_to_charging_events_csv(path_to_events_csv, df_refuel):
+    path_to_charging_events_csv = path_to_events_csv.split(".events.")[0] + ".chargingEvents.csv"
+    with open(path_to_charging_events_csv, mode='w') as charging_events_file:
+        df_refuel.to_csv(charging_events_file, mode='w', header=True, index=False)
 
 
 def get_parking_events_from_events_csv(path_to_events_csv="", df=None):
@@ -316,15 +322,5 @@ def filter_events(input_filename, vehicle_ids, output_filename=None):
     return tree
 
 
-# specify a date to use for the times
-zero = datetime.datetime(2019,12,19)
-
-# Filter
-inputFile = 'events/0.events.xml'
-outputFile = 'events/0.events.filtered.xml'
-vehicleIds = ["22"]
-#tree = filter_events(inputFile, vehicleIds, outputFile)
-
-# Plot
-#plotData = parse_event_xml_to_pandas_dataframe(outputFile)
-#plot_dataframe(plotData)
+def main():
+    pass
