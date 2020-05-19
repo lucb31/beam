@@ -51,6 +51,42 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     person: Person,
     attributesOfIndividual: AttributesOfIndividual
   ): Double = {
+    // Calculate scoring parameters
+    val totalDistanceToDestinationsInM = calcTotalDistanceToDestinationsInM(trips, person)
+    val totalWalkingDistanceToDestinationsInM = calcTotalWalkingDistanceToDestinationsInM(trips)
+    val (endSoc, minSoc) = calcEndOfIterationSOC(trips)
+
+    // Log scoring parameters
+    person.getSelectedPlan.getAttributes.putAttribute("endOfDaySoc", endSoc)
+    person.getSelectedPlan.getAttributes.putAttribute("minSoc", minSoc)
+    person.getSelectedPlan.getAttributes.putAttribute("walkingDistanceInM", totalWalkingDistanceToDestinationsInM)
+    person.getSelectedPlan.getAttributes.putAttribute("totalDistanceToDestinationInM", totalDistanceToDestinationsInM)
+
+    // Normalize scoring parameters
+    val walkingDistScore = calcNormalizedWalkingDistance(totalDistanceToDestinationsInM, 500, 0.2)
+    val minSocScore = calculateMinSocRiskAcceptance(minSoc)
+    val endSocScore = Math.max(0, endSoc)
+
+    // Sum of scoring parameters
+    endSocScore*beamConfig.ftm.scoring.endSocWeight +
+      minSocScore*beamConfig.ftm.scoring.minSocWeight +
+      walkingDistScore*beamConfig.ftm.scoring.walkingDistanceWeight
+  }
+
+  def calcTripWalkingDistanceInM(trip: EmbodiedBeamTrip): Double = {
+    val walkingLegs = trip.legs.filter(_.beamLeg.mode.value == "walk")
+    val walkingTripDistanceInM = walkingLegs.map(_.beamLeg.travelPath.distanceInM).sum
+
+    walkingTripDistanceInM
+  }
+
+  def calcTotalWalkingDistanceToDestinationsInM(trips: ListBuffer[EmbodiedBeamTrip]): Double = {
+    trips.map(
+      calcTripWalkingDistanceInM(_)
+    ).sum
+  }
+
+  def calcTotalDistanceToDestinationsInM(trips: ListBuffer[EmbodiedBeamTrip], person: Person): Double = {
     var totalDistanceToDestinationInM: Double = 0.0
     trips.zipWithIndex foreach {case (trip, index) =>
       val drivingLegs = trip.legs.filter(_.beamLeg.mode.value == "car")
@@ -88,31 +124,10 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
 
       totalDistanceToDestinationInM += distanceInM
     }
-    val walkingDistanceInM = trips.map(
-      calculateTripWalkingDistanceInM(_)
-    ).sum
-
-    val (endSoc, minSoc) = calculateEndOfDaySOC(trips)
-    person.getSelectedPlan.getAttributes.putAttribute("endOfDaySoc", endSoc)
-    person.getSelectedPlan.getAttributes.putAttribute("minSoc", minSoc)
-    person.getSelectedPlan.getAttributes.putAttribute("walkingDistanceInM", walkingDistanceInM)
-    person.getSelectedPlan.getAttributes.putAttribute("totalDistanceToDestinationInM", totalDistanceToDestinationInM)
-
-    val walkingDistanceNormalized = calculateNormalizedWalkingDistance(totalDistanceToDestinationInM, 500, 0.2)
-    val minSocRisk = calculateMinSocRiskAcceptance(minSoc)
-    Math.max(0, endSoc)*beamConfig.ftm.scoring.endSocWeight +
-      minSocRisk*beamConfig.ftm.scoring.minSocWeight +
-      walkingDistanceNormalized*beamConfig.ftm.scoring.walkingDistanceWeight
+    totalDistanceToDestinationInM
   }
 
-  def calculateTripWalkingDistanceInM(trip: EmbodiedBeamTrip): Double = {
-    val walkingLegs = trip.legs.filter(_.beamLeg.mode.value == "walk")
-    val walkingTripDistanceInM = walkingLegs.map(_.beamLeg.travelPath.distanceInM).sum
-
-    walkingTripDistanceInM
-  }
-
-  def calculateEndOfDaySOC (trips: ListBuffer[EmbodiedBeamTrip]) : (Double, Double) = {
+  def calcEndOfIterationSOC(trips: ListBuffer[EmbodiedBeamTrip]) : (Double, Double) = {
     if (trips.size > 0) {
       val filteredLegs = trips.last.legs.filter(_.beamLeg.mode.value == "car")
       if (filteredLegs.size > 0) {
@@ -141,7 +156,7 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     else 0
   }
 
-  def calculateNormalizedWalkingDistance(walkingDistance: Double, maxWalkingDistance: Double, residualUtility: Double): Double = {
+  def calcNormalizedWalkingDistance(walkingDistance: Double, maxWalkingDistance: Double, residualUtility: Double): Double = {
     math.max(math.pow(residualUtility, walkingDistance / maxWalkingDistance), residualUtility)
   }
 
