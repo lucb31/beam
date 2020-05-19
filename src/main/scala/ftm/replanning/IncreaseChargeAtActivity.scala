@@ -6,11 +6,11 @@ import org.matsim.api.core.v01.population.{HasPlansAndId, Person, Plan}
 import org.matsim.core.config.Config
 import org.slf4j.LoggerFactory
 
-class SwitchChargingPreferences @Inject()(config: Config) extends PlansStrategyAdopter {
-  private val log = LoggerFactory.getLogger(classOf[SwitchChargingPreferences])
+class IncreaseChargeAtActivity @Inject()(config: Config) extends PlansStrategyAdopter {
+  private val log = LoggerFactory.getLogger(classOf[IncreaseChargeAtActivity])
 
   override def run(person: HasPlansAndId[Plan, Person]): Unit = {
-    log.debug("Before Replanning SwitchChargingPreferences: Person-" + person.getId + " - " + person.getPlans.size())
+    log.debug("Before Replanning IncreaseChargeAtActivity: Person-" + person.getId + " - " + person.getPlans.size())
     var previousChargeSelection = 0
     if (person.getSelectedPlan.getAttributes.getAttribute("chargeAtActivity") != null)
       previousChargeSelection = person.getSelectedPlan.getAttributes.getAttribute("chargeAtActivity").asInstanceOf[Int]
@@ -20,6 +20,6 @@ class SwitchChargingPreferences @Inject()(config: Config) extends PlansStrategyA
     //person.getSelectedPlan.getAttributes.clear()  // ! May cause some problems
     person.getSelectedPlan.getAttributes.removeAttribute("chargeAtActivity")
     person.getSelectedPlan.getAttributes.putAttribute("chargeAtActivity", previousChargeSelection + 1)
-    log.debug("After Replanning SwitchChargingPreferences: Person-" + person.getId + " - " + person.getPlans.size())
+    log.debug("After Replanning IncreaseChargeAtActivity: Person-" + person.getId + " - " + person.getPlans.size())
   }
 }
