@@ -1,9 +1,12 @@
 package ftm.util
 
 import beam.replanning.ReplanningUtil
-import org.matsim.api.core.v01.network.Link
+import org.matsim.api.core.v01.network.{Link, Network}
 import org.matsim.api.core.v01.{Coord, Id}
-import org.matsim.api.core.v01.population.{Activity, HasPlansAndId, Leg, Person, Plan, Route}
+import org.matsim.api.core.v01.population.{Activity, HasPlansAndId, Leg, Person, Plan, Population, Route}
+import org.matsim.core.config.ConfigUtils
+import org.matsim.core.network.NetworkUtils
+import org.matsim.core.population.PopulationUtils
 import org.matsim.facilities.ActivityFacility
 import org.matsim.utils.objectattributes.attributable.Attributes
 
@@ -23,6 +26,16 @@ object PopulationUtil {
     ReplanningUtil.copyPlanAndSelectForMutation(person.getSelectedPlan.getPerson)
     person.getSelectedPlan.getAttributes.removeAttribute("chargeAtActivity")
     person.getSelectedPlan.getAttributes.putAttribute("chargeAtActivity", chargeAtActivity)
+  }
+
+  def copyPlanAndAddRandomChargingActivity(person: HasPlansAndId[Plan, Person]): Unit = {
+    ReplanningUtil.copyPlanAndSelectForMutation(person.getSelectedPlan.getPerson)
+    val chargingSequence = PopulationUtil.getChargeAtActivityBooleanSeq(person.getSelectedPlan)
+    val newChargingSequence = PopulationUtil.addChargingActivityToChargingSequence(chargingSequence)
+    val newChargeAtActivity = PopulationUtil.chargeAtActivityBooleanSeqToString(newChargingSequence)
+    person.getSelectedPlan.getAttributes.removeAttribute("chargeAtActivity")
+    person.getSelectedPlan.getAttributes.putAttribute("chargeAtActivity", newChargeAtActivity)
+
   }
 
   def getNumberOfActivities(plan: Plan): Int = {
@@ -171,17 +184,7 @@ object PopulationUtil {
     }
     activities
   }
-/*
-  def getActivitiesAndLegsFromPlan(plan: Plan): ArrayBuffer[Activity] = {
-    val activities: ArrayBuffer[Activity] = new ArrayBuffer()
-    plan.getPlanElements.forEach {
-      case activity: Activity => activities += activity
-    }
-    activities
-  }
 
-
- */
   def cloneActivity(activity: Activity): Activity = {
     new Activity {
       var endTime: Double = activity.getEndTime
