@@ -47,3 +47,9 @@ def seconds_to_time_string(seconds):
         string += "0"
     string += str(minute)
     return string
+
+
+def range_inclusive(start, stop, step):
+    inclusive_range = [val for val in range(start, stop, step)]
+    inclusive_range.append(stop)
+    return inclusive_range

@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 import os
 
 from python.ftm.analyze_events import get_refuel_events_from_events_csv, get_total_walking_distances_from_events_csv, \
-    get_parking_events_from_events_csv, get_all_events_from_events_csv
-from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, get_last_iteration
+    get_parking_events_from_events_csv, get_all_events_from_events_csv, df_columns_to_numeric
+from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, get_last_iteration, range_inclusive
 
 ####### CONFIG
 baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
@@ -28,10 +28,6 @@ y_min = 999
 y_max = 0
 ###########
 
-def range_inclusive(start, stop, step):
-    inclusive_range = [val for val in range(start, stop, step)]
-    inclusive_range.append(stop)
-    return inclusive_range
 
 def plot_charging_vehicles(iteration, row, col, figure, y_min, y_max):
     # Setup directory
