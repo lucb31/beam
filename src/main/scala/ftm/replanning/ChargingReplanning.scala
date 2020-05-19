@@ -1,6 +1,5 @@
 package ftm.replanning
 
-import beam.agentsim.agents.parking.ChoosesParking
 import beam.replanning.{PlansStrategyAdopter, ReplanningUtil}
 import ftm.util.PopulationUtil
 import javax.inject.Inject
@@ -39,6 +38,11 @@ class ChargingReplanning @Inject()(config: Config) extends PlansStrategyAdopter 
     else if (minSoc < 0.5) {
       PAddChargingActivity = 0.6
       PRemoveChargingActivity = 0.2
+    }
+    if (minSoc <= 0) {
+      PAddChargingActivity = 1.0
+      PRemoveChargingActivity = 0.0
+      PMoveChargingActivity = 0.0
     }
 
     // Decide what to do
