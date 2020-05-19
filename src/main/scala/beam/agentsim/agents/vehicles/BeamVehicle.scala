@@ -525,7 +525,9 @@ object BeamVehicle {
     //TODO: This method is becoming a little clunky. If it has to grow again then maybe refactor/break it out
     if (beamLeg.mode.isTransit & !Modes.isOnStreetTransit(beamLeg.mode)) {
       Vector.empty
-    } else if (fuelConsumptionDataWithOnlyLength_Id_And_Type) {
+    }
+    /*
+    else if (fuelConsumptionDataWithOnlyLength_Id_And_Type) {
       beamLeg.travelPath.linkIds
         .drop(1)
         .map(
@@ -543,7 +545,9 @@ object BeamVehicle {
               numberOfStops = None
           )
         )
-    } else {
+    }
+     */
+    else {
       val linkIds = beamLeg.travelPath.linkIds.drop(1)
       val linkTravelTimes: IndexedSeq[Double] = beamLeg.travelPath.linkTravelTime.drop(1)
       // generate the link arrival times for each link ,by adding cumulative travel times of previous links
