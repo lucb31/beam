@@ -71,6 +71,11 @@ trait ChoosesParking extends {
           forceCharging = true
         }
       }
+      // Do not charge vehicles with negative soc
+      if (currentBeamVehicle.primaryFuelLevelInJoules < 0) {
+        allowCharging = false
+        forceCharging = false
+      }
 
 
       parkingManager ! ParkingInquiry(
@@ -142,17 +147,15 @@ trait ChoosesParking extends {
         beamServices.geo.distUTMInMeters(stall.locationUTM, beamServices.geo.wgs2Utm(nextLeg.travelPath.endPoint.loc))
 
       // Check if replanning is needed
-      if (stall.tazId.toString == "default") {
-        if (beamServices.beamConfig.ftm.withinDayChargingReplanning) {
-          val chargingSequence = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
-          val activityIndex = data.asInstanceOf[BasePersonData].currentActivityIndex
-          val newChargingSequence = PopulationUtil.moveChargingActivityToNextOpenSlotInChargingSequence(chargingSequence, activityIndex)
-          val newChargeAtActivity = PopulationUtil.chargeAtActivityBooleanSeqToString(newChargingSequence)
-          if (chargingSequence != newChargingSequence) {
-            logger.warn("Within Day Charging Replanning occured at activity %s", currentActivity(data.asInstanceOf[BasePersonData]))
-            matsimPlan.getAttributes.removeAttribute("chargeAtActivity")
-            matsimPlan.getAttributes.putAttribute("chargeAtActivity", newChargeAtActivity)
-          }
+      if (beamServices.beamConfig.ftm.withinDayChargingReplanning && stall.tazId.toString == "default") {
+        val chargingSequence = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
+        val activityIndex = data.asInstanceOf[BasePersonData].currentActivityIndex
+        val newChargingSequence = PopulationUtil.moveChargingActivityToNextOpenSlotInChargingSequence(chargingSequence, activityIndex)
+        val newChargeAtActivity = PopulationUtil.chargeAtActivityBooleanSeqToString(newChargingSequence)
+        if (chargingSequence != newChargingSequence) {
+          logger.warn("Within Day Charging Replanning occured at activity %s", currentActivity(data.asInstanceOf[BasePersonData]))
+          matsimPlan.getAttributes.removeAttribute("chargeAtActivity")
+          matsimPlan.getAttributes.putAttribute("chargeAtActivity", newChargeAtActivity)
         }
       }
       // If the stall is co-located with our destination... then continue on but add the stall to PersonData
