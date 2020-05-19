@@ -279,7 +279,7 @@ class ZonalParkingManager(
             )
             val newStall = inquiry.forceCharging match {
               case true => {
-                // Replanning needed
+                // Within-Day Replanning needed
                 ParkingStall.defaultStall(inquiry.destinationUtm)
               }
               case _ => ParkingStall.lastResortStall(boxAroundRequest, rand)
