@@ -2,11 +2,12 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import geopandas
 import csv
+import random
 
 ###### CONFIG #######
 input_filename = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/munich-enclosing-counties-chargers.xml"
-taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers.csv"
-taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking.csv"
+taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers-small.csv"
+taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking-small.csv"
 taz_id_offset = 100
 taz_default_area = 5000
 parking_default_type = 'Public'
@@ -20,6 +21,11 @@ regular_parking_taz = 1
 regular_parking_x = 4466208
 regular_parking_y = 5334723
 regular_parking_area = 60000
+sampling_rate = 1
+
+# Small LIS
+sampling_rate = 0.1
+max_num_stalls = 1
 
 # All chargers are Level 2 AC
 #####################
@@ -55,14 +61,19 @@ def main():
         # Validate
         if is_charging_station and lat > 0 and lon > 0:
             # Add to dataframe
-            df = df.append({
-                'latitude': lat,
-                'longitude': lon,
-                'numStalls': num_stalls,
-                'power': power,
-                'x': 0,
-                'y': 0
-            }, ignore_index=True)
+            random_val = 0
+            if sampling_rate < 1:
+                random_val = random.random()
+
+            if random_val <= sampling_rate:
+                df = df.append({
+                    'latitude': lat,
+                    'longitude': lon,
+                    'numStalls': num_stalls,
+                    'power': power,
+                    'x': 0,
+                    'y': 0
+                }, ignore_index=True)
 
     print("We found ", len(df.index)," charging stations with a total capacity of ", df.numStalls.sum())
 
