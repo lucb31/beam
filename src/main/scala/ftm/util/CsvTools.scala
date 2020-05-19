@@ -4,8 +4,9 @@ import java.io.{FileOutputStream, OutputStreamWriter}
 
 import beam.sim.config.BeamConfig
 import beam.utils.FileUtils
+import org.jfree.data.category.{CategoryDataset, }
 
-import scala.reflect.io.{Directory, File}
+import scala.reflect.io.{File}
 
 object CsvTools {
   def writeCsvHeader(headers: String, filePath: String): Unit = {
@@ -31,6 +32,34 @@ object CsvTools {
     outputStreamWriter.close()
   }
 
+  def writeGraphDataToCsv(data: CategoryDataset, graphImageFile: String): Unit = {
+    val colCount = data.getColumnCount
+    val rowCount = data.getRowCount
+    val csvPath = graphImageFile.split(".png")(0).concat(".csv")
+    var csvHeader = "x"
+    for (row <- 0 to rowCount - 1) {
+      csvHeader = csvHeader.concat("," + data.getRowKey(row).toString)
+    }
+
+    var csvString = ""
+    for (column <- 0 to colCount - 1) {
+      val x = data.getColumnKey(column)
+      csvString =  csvString.concat("\n" + x.toString)
+      for (row <- 0 to rowCount - 1) {
+        val y = data.getValue(data.getRowKey(row), x)
+        if (y == null)
+          csvString = csvString.concat("," + 0)
+        else
+          csvString = csvString.concat("," + y.toString)
+      }
+    }
+    if (rowCount > 0) {
+      writeCsvHeader(csvHeader, csvPath)
+      val outputStreamWriter = new OutputStreamWriter(new FileOutputStream(csvPath, true))
+      outputStreamWriter.append(csvString)
+      outputStreamWriter.close()
+    }
+  }
   def writeToCsv(valueSeq: IndexedSeq[Any], fileName: String, beamConfig: BeamConfig): Unit = {
     val outputDir = getOutputDirPath(beamConfig)
     writeToCsv(valueSeq, outputDir + fileName)

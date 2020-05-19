@@ -3,6 +3,7 @@ import java.util.concurrent.TimeUnit
 
 import beam.analysis.plots.{GraphAnalysis, GraphUtils, GraphsStatsAgentSimEventsListener}
 import beam.utils.logging.ExponentialLazyLogging
+import ftm.util.CsvTools
 import org.jfree.chart.ChartFactory
 import org.jfree.chart.plot.PlotOrientation
 import org.jfree.data.category.{CategoryDataset, DefaultCategoryDataset}
@@ -81,6 +82,7 @@ class ActivityTypeAnalysis(maxTime: Int) extends GraphAnalysis with ExponentialL
     val chart =
       ChartFactory.createLineChart(title, "Hour", "#Count", dataSet, PlotOrientation.VERTICAL, true, true, false)
 
+    CsvTools.writeGraphDataToCsv(dataSet, graphImageFile)
     GraphUtils.saveJFreeChartAsPNG(
       chart,
       graphImageFile,
