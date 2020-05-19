@@ -16,33 +16,17 @@ import scala.util.Random
 object RepeatAgentPlans extends App with StrictLogging {
   logger.info("Hello")
   if (null != args && args.size > 0) {
-    val plansPath = args(0) //"test/input/beamville/beam.conf"
+    val plansPath = args(0)
     val newPath = args(1)
     val days = 3
     val dailyMaxHour = 24
-    val samplePopulationSize = 0
+    val samplePopulationSize = 3
 
     val config = ConfigUtils.createConfig()
     val scenario: Scenario = ScenarioUtils.loadScenario(config)
     val populationReader = new PopulationReader(scenario)
     populationReader.readFile(plansPath)
-
-    var outputPopulation = PopulationUtils.createPopulation(config)
-    if (samplePopulationSize > 0) {
-      val random: Random = new Random()
-      val personArray = scenario.getPopulation.getPersons.values().toArray()
-      val inputPopulationSize = personArray.size
-      for (i <- 0 to samplePopulationSize - 1) {
-        val nextIndex = random.nextInt(inputPopulationSize)
-        val person: Person = personArray(nextIndex).asInstanceOf[Person]
-
-        // Check if unique
-        if (!outputPopulation.getPersons.containsValue(person))
-          outputPopulation.addPerson(person)
-      }
-    }
-    else
-      outputPopulation = scenario.getPopulation
+    val outputPopulation = PopulationUtil.generateSamplePopulation(samplePopulationSize, scenario.getPopulation)
 
     outputPopulation.getPersons.forEach {
       case (_, person: Person) =>

@@ -14,6 +14,119 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 object PopulationUtil {
+  def generateSamplePopulation(samplePopulationSize: Int, inputPopulation: Population): Population = {
+    generateSamplePopulation(samplePopulationSize, inputPopulation, 0.9)
+  }
+
+  def generateSamplePopulation(samplePopulationSize: Int, inputPopulation: Population, workActivityRatio: Double): Population = {
+    val config = ConfigUtils.createConfig()
+    var outputPopulation = PopulationUtils.createPopulation(config)
+    // Validate workActivityRatio
+    if (workActivityRatio > 1 || workActivityRatio < 0) {
+      outputPopulation = inputPopulation
+    }
+    else if (samplePopulationSize > 0 && samplePopulationSize < inputPopulation.getPersons.size()) {
+      val random: Random = new Random()
+      var randomPersonArray = random.shuffle(inputPopulation.getPersons.values().toArray.toSeq)
+      var personsWithoutWorkAct = 0
+      while (outputPopulation.getPersons.size() < samplePopulationSize && randomPersonArray.size > 0) {
+        val person = randomPersonArray(0).asInstanceOf[Person]
+        if (!checkIfPersonHasWorkAct(person)) {
+          if (personsWithoutWorkAct < (1 - workActivityRatio) * samplePopulationSize) {
+            outputPopulation.addPerson(person)
+            personsWithoutWorkAct += 1
+          }
+        }
+        else {
+          outputPopulation.addPerson(person)
+        }
+        randomPersonArray = randomPersonArray.drop(1)
+      }
+    }
+    else
+      outputPopulation = inputPopulation
+    outputPopulation
+  }
+
+  def generateSamplePopulation(samplePopulationSize: Int, inputPopulation: Population, network: Network): Population = {
+    generateSamplePopulation(samplePopulationSize, inputPopulation, network, 0.9)
+  }
+
+  def generateSamplePopulation(samplePopulationSize: Int, inputPopulation: Population, network: Network, workActivityRatio: Double): Population = {
+    // Checks if persons in proximity to a network link
+    val config = ConfigUtils.createConfig()
+    var outputPopulation = PopulationUtils.createPopulation(config)
+    if (workActivityRatio > 1 || workActivityRatio < 0) {
+      outputPopulation = inputPopulation
+    }
+    else if (samplePopulationSize > 0 && samplePopulationSize < inputPopulation.getPersons.size()) {
+      val random: Random = new Random()
+      var randomPersonArray = random.shuffle(inputPopulation.getPersons.values().toArray.toSeq)
+      var personsWithoutWorkAct = 0
+      while (outputPopulation.getPersons.size() < samplePopulationSize && randomPersonArray.size > 0) {
+        val person = randomPersonArray(0).asInstanceOf[Person]
+
+        if (checkIfPersonWithinNetworkBoundaries(network, person)) {
+          if (!checkIfPersonHasWorkAct(person)) {
+            if (personsWithoutWorkAct < (1 - workActivityRatio) * samplePopulationSize) {
+              outputPopulation.addPerson(person)
+              personsWithoutWorkAct += 1
+            }
+          }
+          else {
+            outputPopulation.addPerson(person)
+          }
+        }
+        randomPersonArray = randomPersonArray.drop(1)
+      }
+    }
+    else
+      outputPopulation = inputPopulation
+    outputPopulation
+
+  }
+
+
+  def checkIfPersonHasWorkAct(person: Person): Boolean = {
+    person.getSelectedPlan.getPlanElements.forEach({
+      case activity: Activity =>
+        if (activity.getType == "Work") {
+          return true
+        }
+      case _ =>
+    })
+    false
+  }
+  def checkIfPersonWithinNetworkBoundaries(network: Network, person: Person, maxDistanceToNetwork: Double = 300.0, ignoreNighttimeActs: Boolean = true): Boolean = {
+    // Check for activities within proximity to network nodes and across day boundaries / nighttime activities
+    var prevActivityEndTime = 0.0
+    var prevLegDepartureTime = 0.0
+    person.getSelectedPlan.getPlanElements.forEach({
+      case activity: Activity =>
+        // Check for nighttime activity
+        val activityEndTime = activity.getEndTime
+        if (activityEndTime > 0.0 && activityEndTime < prevActivityEndTime) {
+          if (ignoreNighttimeActs) return false
+          activity.setEndTime(24 * 3600 + activityEndTime)
+        }
+
+        // Check if activity has a network node near it
+        val distanceToNetwork = NetworkUtils.getEuclideanDistance(activity.getCoord, NetworkUtils.getNearestNode(network, activity.getCoord).getCoord)
+        if (distanceToNetwork > maxDistanceToNetwork) return false
+        prevActivityEndTime = activity.getEndTime
+
+      case leg: Leg =>
+        // Check for nighttime leg
+        val legDepartureTime = leg.getDepartureTime
+        if (legDepartureTime > 0.0 && legDepartureTime < prevLegDepartureTime) {
+          leg.setDepartureTime(24 * 3600 + legDepartureTime)
+        }
+        prevLegDepartureTime = leg.getDepartureTime
+      case _ =>
+    })
+    true
+  }
+
   def copyPlanAndSelectRandomChargingPreference(person: HasPlansAndId[Plan, Person]): Unit = {
     // Determine number of different combinations by number of activities
     val activities = getNumberOfActivities(person.getSelectedPlan)
