@@ -13,10 +13,12 @@ def get_run_dir(base_dir, latest_run=""):
 
 
 def get_latest_run(base_dir):
-    latest_run = ''
+    latest_run = '2020-01-01_00-00-00'
     for entry in scandir.scandir(base_dir):
-        if entry.name > latest_run:
-            latest_run = entry.name
+        date = entry.name.split('2020')
+        if len(date) > 1:
+            if(date[1] > latest_run.split('2020')[1]):
+                latest_run = entry.name
     return latest_run
 
 
