@@ -56,6 +56,7 @@ object PopulationUtil {
     // Checks if persons in proximity to a network link
     val config = ConfigUtils.createConfig()
     var outputPopulation = PopulationUtils.createPopulation(config)
+    var countOutsideNetwork = 0
     if (workActivityRatio > 1 || workActivityRatio < 0) {
       outputPopulation = inputPopulation
     }
@@ -77,11 +78,15 @@ object PopulationUtil {
             outputPopulation.addPerson(person)
           }
         }
+        else {
+          countOutsideNetwork += 1
+        }
         randomPersonArray = randomPersonArray.drop(1)
       }
     }
     else
       outputPopulation = inputPopulation
+    println("Ignored ", countOutsideNetwork, "plans outside the network")
     outputPopulation
 
   }
@@ -223,6 +228,8 @@ object PopulationUtil {
         newSequence = addChargingActivityToChargingSequence(newSequence)
       }
     }
+    else // If no charging activity found, add one
+      newSequence = addChargingActivityToChargingSequence(newSequence)
     newSequence
   }
 
