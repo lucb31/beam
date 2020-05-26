@@ -196,7 +196,10 @@ def main():
             plt.xticks([], [])
             plt.yticks([], [])
             ax.set_axis_off()
-            plt.savefig(output_prefix+str(iteration)+'_totalFuel.png', dpi=300, bbox_inches='tight', pad_inches=0)
+            working_dir = get_iteration_dir(path_to_simulation_run, iteration)
+            fig_path = working_dir+'heatmap__totalFuel.png'
+            print('Saving file to' + fig_path)
+            plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
 
         if plot_avg_duration:
             scheme = mapclassify.Quantiles([0, avg_duration_max], k=10)
@@ -220,7 +223,10 @@ def main():
             plt.xticks([], [])
             plt.yticks([], [])
             ax.set_axis_off()
-            plt.savefig(output_prefix+str(iteration)+'_avgDuration.png', dpi=300, bbox_inches='tight', pad_inches=0)
+            working_dir = get_iteration_dir(path_to_simulation_run, iteration)
+            fig_path = working_dir+'heatmap__avgDuration.png'
+            print('Saving file to' + fig_path)
+            plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
 
         if plot_avg_fuel:
             scheme = mapclassify.Quantiles([0, avg_fuel_max], k=10)
@@ -244,7 +250,11 @@ def main():
             plt.xticks([], [])
             plt.yticks([], [])
             ax.set_axis_off()
-            plt.savefig(output_prefix+str(iteration)+'_avgFuel.png', dpi=300, bbox_inches='tight', pad_inches=0)
+
+            working_dir = get_iteration_dir(path_to_simulation_run, iteration)
+            fig_path = working_dir+'heatmap_avgFuel.png'
+            print('Saving file to' + fig_path)
+            plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
 
     plt.show()
 

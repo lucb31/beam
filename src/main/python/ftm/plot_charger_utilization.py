@@ -129,6 +129,7 @@ def plot_util_barplot():
         plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
         plt.xlabel("Parkzone der Ladestation")
         plt.ylabel("Übertragene Energie in kWh")
+        print('Saving figure to', path_to_output_png_charger_util)
         plt.savefig(path_to_output_png_charger_util, dpi=300, bbox_inches='tight', pad_inches=0)
         plt.show()
     else:
@@ -219,7 +220,9 @@ def plot_charging_vehicles():
         plt.ylabel("Anzahl der ladenden Fahrzeuge")
         if show_title:
             plt.title('Iteration '+str(iteration)+', '+latest_run)
-        plt.savefig(path_to_output_png_number_charging_multiple_iterations, dpi=300, bbox_inches='tight', pad_inches=0)
+        path_to_output_png = run_dir+'summaryStats/number_charging_multiple_iterations.png'
+        print('Saving figure to ', path_to_output_png)
+        plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
         plt.show()
     else:
         plotly_figure = make_subplots(rows=num_rows, cols=1, subplot_titles=subplot_titles, shared_xaxes=True, vertical_spacing=0.02)
@@ -263,8 +266,194 @@ def plot_charging_events():
         ax.grid(axis='y', linestyle='--')
         plt.legend()
         plt.title('Activity Type')
-        plt.savefig(working_dir + "activityType_fixedScaling.png", dpi=300, bbox_inches='tight', pad_inches=0)
+        path_to_output_png = working_dir + "activityType_fixedScaling.png"
+        print('Saving figure to ', path_to_output_png)
+        plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
         plt.show()
+
+
+
+def plot_heatmaps(show_total_fuel = True, show_avg_duration = False, show_avg_fuel = False):
+    # Load map data
+    print("Loading map data...")
+    taz_centers = pd.read_csv(path_to_taz_centers_csv)
+    taz_parking = pd.read_csv(path_to_taz_parking_csv)
+    #munich_enclosing_roads_masked = gpd.read_file(path_to_munich_road_masked)
+    #munich_enclosing_roads_masked.to_crs(crs=crs)
+    munich_polygon = gpd.read_file(path_to_munich_polygon)
+    munich_polygon.to_crs(crs=crs)
+    taz_geometry = [Point(x, y) for x, y in zip(taz_centers['coord-x'], taz_centers['coord-y'])]
+    print("...done")
+
+    total_fuel_max = 0
+    avg_duration_max = 0
+    avg_fuel_max = 0
+    plot_dataframes_collection = {}
+    for iteration in iterations:
+        working_dir = get_iteration_dir(run_dir, iteration)
+        output_prefix = working_dir + 'heatmap_'
+        print('Working dir:  '+str(working_dir))
+        path_to_events_csv = working_dir+"events.csv"
+        # Load charging event and charging station data
+        print('Loading event data from ', path_to_events_csv, '...')
+        charging_events = get_refuel_events_from_events_csv(path_to_events_csv)
+        print("...done")
+
+        # Aggregate data from taz-centers and events
+        print("Aggregating data...")
+        sum_df = pd.DataFrame({
+            'totalFuel': np.zeros(len(taz_centers.index)),
+            'totalDuration': np.zeros(len(taz_centers.index)),
+            'avgDuration': np.zeros(len(taz_centers.index)),
+            'avgFuel': np.zeros(len(taz_centers.index)),
+            'eventCount': np.zeros(len(taz_centers.index)),
+            'parkingTaz': taz_centers.taz,
+            'numStalls': taz_parking.numStalls,
+            'geometry': taz_geometry
+        })
+        for group, df in charging_events.groupby("parkingTaz"):
+            fuelSum = df['fuel'].sum()
+            duration_sum = df['duration'].sum()
+
+            # Normalize by number of stalls
+            fuelSum = fuelSum / sum_df.loc[sum_df['parkingTaz'] == group, 'numStalls']
+
+            sum_df.loc[sum_df['parkingTaz'] == group, 'totalFuel'] = fuelSum
+            sum_df.loc[sum_df['parkingTaz'] == group, 'totalDuration'] = duration_sum
+            sum_df.loc[sum_df['parkingTaz'] == group, 'eventCount'] = len(df.index)
+            sum_df.loc[sum_df['parkingTaz'] == group, 'avgDuration'] = duration_sum / len(df.index)
+            sum_df.loc[sum_df['parkingTaz'] == group, 'avgFuel'] = fuelSum / len(df.index)
+        geo_df = gpd.GeoDataFrame(sum_df, crs=taz_centers_crs)
+        geo_df = geo_df.to_crs(crs)
+        # Unit conversions
+        geo_df['totalFuel'] = geo_df['totalFuel'] / 3.6e6       # Joule to kWh
+        geo_df['avgFuel'] = geo_df['avgFuel'] / 3.6e6       # Joule to kWh
+        geo_df['avgDuration'] = geo_df['avgDuration'] / 60       # seconds to minutes
+        print('Total fuel transferred: ', geo_df.totalFuel.sum(), 'kWh')
+        print("...done")
+
+        # Filter by polygon shape
+        print("Filtering charging events by polygon shape ...")
+        mask = geo_df.geometry.within(munich_polygon.geometry.to_crs(crs)[0])
+        geo_df_masked = geo_df[mask]
+        print("...location data done")
+
+        # Update max values
+        if geo_df_masked.totalFuel.max() > total_fuel_max:
+            total_fuel_max = geo_df_masked.totalFuel.max()
+        if geo_df_masked.avgDuration.max() > avg_duration_max:
+            avg_duration_max = geo_df_masked.avgDuration.max()
+        if geo_df_masked.avgFuel.max() > avg_fuel_max:
+            avg_fuel_max = geo_df_masked.avgFuel.max()
+
+        # Save to shapefile and dataframe
+        geo_df_masked.to_file(output_prefix+str(iteration)+'.shp')
+        plot_dataframes_collection[iteration] = geo_df_masked
+
+    # Plot points and basemap
+    for iteration in iterations:
+        geo_df_masked = plot_dataframes_collection[iteration]
+        geo_df_masked = geo_df_masked.to_crs(epsg=3857)
+        chargers = geo_df_masked.centroid.geometry.values
+        x_c = [c.x for c in chargers]
+        y_c = [c.y for c in chargers]
+        if show_total_fuel:
+            fig, ax = plt.subplots(figsize=(12, 9))
+            scheme = mapclassify.Quantiles([0, total_fuel_max], k=10)
+            """
+            # Plot all values
+            values = [totalFuel for totalFuel in zip(geo_df_masked.totalFuel)]
+            sizes = [scale_by_scheme(totalFuel, scheme) for totalFuel in values]
+            """
+            # Plot null values
+            geo_df_masked_null = geo_df_masked[geo_df_masked.totalFuel == 0]
+            chargers = geo_df_masked_null.centroid.geometry.values
+            x_c = [c.x for c in chargers]
+            y_c = [c.y for c in chargers]
+            values = [totalFuel for totalFuel in zip(geo_df_masked_null.totalFuel)]
+            sizes = [scale_by_scheme(totalFuel, scheme) for totalFuel in values]
+            ax.scatter(x_c, y_c, marker="o", c='grey', s=sizes)
+
+            # Only plot not null values
+            geo_df_masked_not_null = geo_df_masked[geo_df_masked.totalFuel > 0]
+            chargers = geo_df_masked_not_null.centroid.geometry.values
+            x_c = [c.x for c in chargers]
+            y_c = [c.y for c in chargers]
+            values = [totalFuel for totalFuel in zip(geo_df_masked_not_null.totalFuel)]
+            sizes = [scale_by_scheme(totalFuel, scheme) for totalFuel in values]
+            ax.scatter(x_c, y_c, marker="o", c=values, cmap=cmap_name, s=sizes)
+            ctx.add_basemap(ax)
+
+            # Add Colorbar
+            sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=plt.Normalize(vmin=0, vmax=total_fuel_max))
+            sm.set_array([])
+            cbar = plt.colorbar(sm, orientation="horizontal", pad=0.02, aspect=40)
+            cbar.set_label("Übertragene Energie in kWh")
+            cbar.orientation = "horizontal"
+
+            plot_title = 'Übertragene Energie pro Ladepunkt (Iteration '+str(iteration)+', '+latest_run+')'
+            if show_title:
+                plt.title(plot_title)
+            plt.xticks([], [])
+            plt.yticks([], [])
+            ax.set_axis_off()
+            path_to_output_png = output_prefix+'totalFuel.png'
+            print('Saving fig to ', path_to_output_png)
+            plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
+
+        if show_avg_duration:
+            scheme = mapclassify.Quantiles([0, avg_duration_max], k=10)
+            values = [avg_duration for avg_duration in zip(geo_df_masked.avgDuration)]
+            sizes = [scale_by_scheme(value, scheme) for value in values]
+
+            fig, ax = plt.subplots(figsize=(12, 9))
+            ax.scatter(x_c, y_c, marker="o", c=values, cmap=cmap_name, s=sizes)
+            ctx.add_basemap(ax)
+
+            # Add Colorbar
+            sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=plt.Normalize(vmin=0, vmax=avg_duration_max))
+            sm.set_array([])
+            cbar = plt.colorbar(sm, orientation="horizontal", pad=0.02, aspect=40)
+            cbar.set_label("Durchschnittliche Ladedauer in Minuten ")
+            cbar.orientation = "horizontal"
+
+            plot_title = 'Durchschnittliche Ladedauer eines Ladevorgangs (Iteration '+str(iteration)+')'
+            if show_title:
+                plt.title(plot_title)
+            plt.xticks([], [])
+            plt.yticks([], [])
+            ax.set_axis_off()
+            path_to_output_png = output_prefix+'avgDuration.png'
+            print('Saving fig to ', path_to_output_png)
+            plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
+
+        if show_avg_fuel:
+            scheme = mapclassify.Quantiles([0, avg_fuel_max], k=10)
+            values = [val for val in zip(geo_df_masked.avgFuel)]
+            sizes = [scale_by_scheme(value, scheme) for value in values]
+
+            fig, ax = plt.subplots(figsize=(12, 9))
+            ax.scatter(x_c, y_c, marker="o", c=values, cmap=cmap_name, s=sizes)
+            ctx.add_basemap(ax)
+
+            # Add Colorbar
+            sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=plt.Normalize(vmin=0, vmax=avg_fuel_max))
+            sm.set_array([])
+            cbar = plt.colorbar(sm, orientation="horizontal", pad=0.02, aspect=40)
+            cbar.set_label("Durchschnittliche Energiemenge in kWh ")
+            cbar.orientation = "horizontal"
+
+            plot_title = 'Durchschnittliche übertragene Energiemenge eines Ladevorgangs (Iteration '+str(iteration)+')'
+            if show_title:
+                plt.title(plot_title)
+            plt.xticks([], [])
+            plt.yticks([], [])
+            ax.set_axis_off()
+            path_to_output_png = output_prefix+'avgFuel.png'
+            print('Saving fig to ', path_to_output_png)
+            plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
+
+    plt.show()
 
 
 def main():

@@ -393,6 +393,7 @@ def plot_soc_dt_pyplot_multiple_iterations(start_iter, stop_iter, vehicle_id):
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     plt.xlabel("Simulationszeit in Stunden")
     plt.ylabel("Ladezustand in kWh")
+    print('Saving fig to ', path_to_output_png)
     plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
     plt.show()
 
@@ -438,9 +439,12 @@ def plot_soc_dt(iteration, row, figure, vehicle_id, ytitle, plot_events=False):
         ax.set_ylabel('Ladezustand in kWh')
         ax.grid(axis='y', linestyle='--')
         plt.legend()
+        print('Saving fig to ', path_to_output_png)
         plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
         ax.set_xlim([14.5, 16.5])
-        plt.savefig(path_to_output_png.split('.png')[0] + 'zoomed.png', dpi=300, bbox_inches='tight', pad_inches=0)
+        path_to_output_png = path_to_output_png.split('.png')[0] + 'zoomed.png'
+        print('Saving fig to ', path_to_output_png)
+        plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
         plt.show()
 
     if plot_events:
@@ -539,7 +543,9 @@ def main():
             plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
             plt.xlabel("Simulationszeit in Stunden")
             plt.ylabel("Ladezustand in kWh")
-            #plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
+            fig_path = run_dir + 'summaryStats/soc_vehicle' + str(vehicle_id)
+            print('Saving file to ', fig_path)
+            plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
             plt.show()
         else:
             for iteration in range_inclusive(0, last_iteration, iteration_stepsize):

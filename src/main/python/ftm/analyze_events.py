@@ -7,7 +7,6 @@ import tikzplotlib
 import numpy as np
 from os import path
 
-from python.ftm.charging_power_calculation import calc_avg_charging_power_numeric
 from python.ftm.util import seconds_to_time_string
 
 
@@ -286,7 +285,9 @@ def plot_dataframe(df):
     plt.title('SOC of Vehicles')
     plt.grid()
 
-    plt.savefig(output_filename + '.png')
+    path_to_output_png = output_filename + '.png'
+    print('Saving fig to ', path_to_output_png)
+    plt.savefig(path_to_output_png)
     tikzplotlib.save(output_filename + ".tex")
 
     plt.show()

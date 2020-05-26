@@ -115,6 +115,7 @@ def main():
     plt.ylabel('Anzahl der abgeschlossenen Ladevorgänge')
     if show_title:
         plt.title('Iteration '+str(iteration)+', '+latest_run)
+    print('Saving file to ', path_to_output_png)
     plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
     plt.show()
 
