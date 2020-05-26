@@ -4,7 +4,7 @@ import java.io.{FileOutputStream, OutputStreamWriter}
 
 import beam.sim.config.BeamConfig
 import beam.utils.FileUtils
-import org.jfree.data.category.{CategoryDataset, }
+import org.jfree.data.category.{CategoryDataset}
 
 import scala.reflect.io.{File}
 
