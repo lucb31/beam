@@ -9,18 +9,21 @@ from python.ftm.util import colors, range_inclusive, get_latest_run, get_run_dir
 
 ########### CONFIG
 
-#path_to_events_csv = "/data/lucas/SA/Simulation Runs/munich-simple_24h_DEBUG_replanning__2020-05-12_11-03-13/ITERS/it.2/2.events.csv"
 baseDir = "/data/lucas/SA/Simulation Runs/"
 latest_run = get_latest_run(baseDir)
 #latest_run = "munich-simple__500agents_72h_30iters__2020-05-13_10-56-07"
 #latest_run = "munich-simple_24h_DEBUG_replanning__2020-05-12_11-03-13"
+#latest_run = "munich-simple__2020-04-22_11-35-35"
+latest_run = "munich-case-study_5000Agents_30Iters__2020-05-21_10-17-56"
 run_dir = get_run_dir(baseDir, latest_run)
 first_iteration = 1
-last_iteration = 1
-iteration_stepsize = 1
-max_hour = 24
+last_iteration = 30
+iteration_stepsize = 10
+iterations = range_inclusive(first_iteration, last_iteration, iteration_stepsize)
+#iterations = [0, 1, 25, 50]
+max_hour = 72
 show_title = False
-path_to_output_png = '/home/lucas/IdeaProjects/beam/output/' + 'number_of_charging_events_with_acttype_' + latest_run + '.png'
+path_to_output_png = run_dir + 'summaryStats/number_of_charging_events_with_acttype.png'
 font = {'size': 15}
 rc('font', **font)
 ############
@@ -30,10 +33,11 @@ def main():
     plot_data = {}
     y_max = 0
     act_types = ['Home', 'Work', 'Other', 'Education', 'Shopping']
-    for iteration in range_inclusive(first_iteration, last_iteration, iteration_stepsize):
+    for iteration in iterations:
         # Setup working directory and plot configuration
         working_dir = get_iteration_dir(run_dir, iteration)
         path_to_events_csv = working_dir + "events.csv"
+        print("Aggregating data at path ", path_to_events_csv)
 
         # Get refuel events
         df_refuel_events = get_refuel_events_from_events_csv(path_to_events_csv)
@@ -57,7 +61,7 @@ def main():
                 person_id = df_events_vehicle_filtered_has_person_id['person'].unique()[0]
                 df_events_person_filtered = df_columns_to_numeric(df_events_has_person[df_events_has_person['person'] == person_id], ['time'])
 
-                # Correct activity ist the first Start act after the last end act
+                # Correct activity is the first Start act after the previous end act
                 df_events_actstart = df_events_person_filtered[df_events_person_filtered['type'] == 'actstart']
                 df_events_actend = df_events_person_filtered[df_events_person_filtered['type'] == 'actend']
                 df_events_actend_preceding = df_events_actend[df_events_actend['time'] <= time].sort_values(by='time')
@@ -91,20 +95,26 @@ def main():
                     y_max = y
         plot_data[iteration] = bin
 
-    fig, axes = plt.subplots(len(plot_data), 1, figsize=(8, 8))
+    fig, axes = plt.subplots(len(plot_data), 1, figsize=(8, 12), sharex=True, sharey=True)
     plot_row = 0
-    for iteration in range_inclusive(first_iteration, last_iteration, iteration_stepsize):
+    for iteration in iterations:
         data = plot_data[iteration]
         for index, act_type in enumerate(act_types):
             if first_iteration == last_iteration:
                 ax = axes
             else:
                 ax = axes[plot_row]
-            ax.plot(np.arange(0, max_hour+1), data[act_type], label=act_type+', Iteration '+str(iteration), color=colors[index])
+            label = act_type+', Iteration '+str(iteration)
+            label = act_type
+            ax.plot(np.arange(0, max_hour+1), data[act_type], label=label, color=colors[index])
             ax.set_xlim([0, max_hour])
             ax.set_ylim([0, y_max*1.1])
+            ax2 = ax.twinx()
+            ax2.set_yticks([])
+            ax2.set_ylabel('Iteration '+str(iteration))
             ax.grid(axis='y', linestyle='--')
-            ax.legend(loc='upper left', ncol=1)
+            if plot_row == 0:
+                ax.legend(loc='upper left', ncol=3)
         plot_row += 1
 
     # add a big axis, hide frame
