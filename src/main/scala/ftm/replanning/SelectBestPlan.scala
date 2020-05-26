@@ -14,18 +14,21 @@ class SelectBestPlan @Inject()(config: Config) extends PlansStrategyAdopter {
 
   override def run(person: HasPlansAndId[Plan, Person]): Unit = {
     log.debug("Before Replanning SelectBestPlan: Person-" + person.getId + " - " + person.getPlans.size())
+    /*
     if (person.getPlans.size() < 2) {
       PopulationUtil.copyPlanAndAddRandomChargingActivity(person)
     } else {
-      var bestPlan = person.getSelectedPlan
-      val iterator = person.getPlans.iterator()
-      while (iterator.hasNext) {
-        val plan = iterator.next()
-        if (plan.getScore > bestPlan.getScore)
-          bestPlan = plan
-      }
-      person.setSelectedPlan(bestPlan)
+
+     */
+    var bestPlan = person.getSelectedPlan
+    val iterator = person.getPlans.iterator()
+    while (iterator.hasNext) {
+      val plan = iterator.next()
+      if (plan.getScore > bestPlan.getScore)
+        bestPlan = plan
     }
+    person.setSelectedPlan(bestPlan)
+    //}
 
     log.debug("After Replanning SelectBestPlan: Person-" + person.getId + " - " + person.getPlans.size())
   }
