@@ -6,8 +6,8 @@ import random
 
 ###### CONFIG #######
 input_filename = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/munich-enclosing-counties-chargers.xml"
-taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers-small.csv"
-taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking-small.csv"
+taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers.csv"
+taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking.csv"
 taz_id_offset = 100
 taz_default_area = 5000
 parking_default_type = 'Public'
@@ -22,10 +22,20 @@ regular_parking_x = 4466208
 regular_parking_y = 5334723
 regular_parking_area = 60000
 sampling_rate = 1
+small_lis = False
+case_study_lis = True
 
 # Small LIS
-sampling_rate = 0.1
-max_num_stalls = 1
+if small_lis:
+    sampling_rate = 0.1
+    max_num_stalls = 1
+    taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-centers-small.csv"
+    taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/taz-parking-small.csv"
+
+if case_study_lis:
+    scale_num_stalls = 0.5
+    taz_centers_path = "/home/lucas/IdeaProjects/beam/test/input/munich-case-study/conversion-input/taz-centers.csv"
+    taz_parking_path = "/home/lucas/IdeaProjects/beam/test/input/munich-case-study/conversion-input/taz-parking.csv"
 
 # All chargers are Level 2 AC
 #####################
@@ -75,7 +85,15 @@ def main():
                     'y': 0
                 }, ignore_index=True)
 
-    print("We found ", len(df.index)," charging stations with a total capacity of ", df.numStalls.sum())
+    # Scale number of stalls
+    total_num_stalls = df.numStalls.sum()
+    while df.numStalls.sum() > total_num_stalls*scale_num_stalls:
+        random_index = random.choice(df.index.values)
+        reduced_num_stalls = max(int(df.loc[df.index == random_index, 'numStalls'] / 2), 1)
+        df.loc[df.index == random_index, 'numStalls'] = reduced_num_stalls
+        #df_refuel_events.loc[df_refuel_events.time.eq(time) & df_refuel_events.vehicle.eq(vehicle_id), 'actType'] = 'Other'
+
+    print("Generating ", len(df.index)," charging stations with a total capacity of ", df.numStalls.sum(), ", original capacity was ", total_num_stalls)
 
     # Convert to GK 4 CRS
     gdf = geopandas.GeoDataFrame(df, geometry=geopandas.points_from_xy(df.longitude, df.latitude))
