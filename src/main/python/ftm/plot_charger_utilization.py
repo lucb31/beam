@@ -3,37 +3,69 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from matplotlib import pyplot as plt
 from matplotlib import rc
+from shapely.geometry import Point
 import numpy as np
 import os
+import geopandas as gpd
+import contextily as ctx
+import mapclassify
 
 from python.ftm.analyze_events import get_refuel_events_from_events_csv, get_total_walking_distances_from_events_csv, \
     get_parking_events_from_events_csv, get_all_events_from_events_csv, df_columns_to_numeric
-from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, get_last_iteration, range_inclusive
+from python.ftm.util import get_run_dir, get_latest_run, get_iteration_dir, get_last_iteration, range_inclusive, \
+    scale_by_scheme
 
 ####### CONFIG
+# Map data
+path_to_taz_centers_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-centers.csv"
 path_to_taz_parking = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-parking.csv"
+path_to_munich_shape = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/shapefiles/munich_area_hybrid_shape.shp"
+path_to_munich_polygon = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/munich-polygon.geojson"
+path_to_munich_road_masked = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/conversion-input/shapefiles/munich_enclosing_roads_masked.shp"
+crs = "EPSG:4326"
+taz_centers_crs = "EPSG:31468"
+use_small_lis = False
+use_case_study_lis = True
+if use_small_lis:
+    path_to_taz_centers_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-centers-small.csv"
+    path_to_taz_parking_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-simple/taz-parking-small.csv"
+elif use_case_study_lis:
+    path_to_taz_centers_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-case-study/taz-centers.csv"
+    path_to_taz_parking_csv = "/home/lucas/IdeaProjects/beam/test/input/munich-case-study/taz-parking.csv"
+
+
+# Sim run data
 baseDir = "/home/lucas/IdeaProjects/beam/output/munich-simple/"
 baseDir = "/data/lucas/SA/Simulation Runs/"
 latest_run = get_latest_run(baseDir)
 #latest_run = "munich-simple__500agents_72h_30iters__2020-05-13_10-56-07"
-first_iteration = 1
-last_iteration = 1
-max_hour = 24
-step_size = 1
+#latest_run = "munich-simple__2020-04-22_11-35-35"
+latest_run = "munich-case-study_5000Agents_30Iters__2020-05-21_10-17-56"
 run_dir = get_run_dir(baseDir, latest_run)
+
+first_iteration = 30
+last_iteration = 30
+max_hour = 72
+step_size = 16
+iterations = range_inclusive(first_iteration, last_iteration, step_size)
+
 compare_iterations = False
 show_charger_util = False
 show_number_of_charging_vehicles = True
 show_activity_types = False
+show_heatmap_fuel = False
+show_heatmap_avg_fuel = False
+show_heatmap_avg_duration = True
 show_title = False
 plotting_engine = "pyplot" # Options: pyplot, plotly
 path_to_output_png_charger_util = '/home/lucas/IdeaProjects/beam/output/' + "charger_utilization_barplot.png"
-path_to_output_png_number_charging_multiple_iterations = '/home/lucas/IdeaProjects/beam/output/' + "number_charging_multiple_iterations.png"
 ytitle = "Transferred energy in kwh"
 y_min = 999
 y_max = 0
 font = {'size': 15}
 rc('font', **font)
+cmap_name = 'inferno'
+color_TUM_BLUE = '#0065BD'
 ###########
 
 
@@ -49,16 +81,15 @@ def get_plotdata_charging_vehicles(iteration):
         plot_data = pd.DataFrame({'x': [], 'charging-vehicle': []})
 
     plot_data = df_columns_to_numeric(plot_data, ['x', 'charging-vehicle'])
-    if len(plot_data[plot_data['x'] == 0].index) == 0:
-        plot_data =  plot_data.append({
-            'x': 0,
-            'charging-vehicle': 0
-        }, ignore_index=True)
-    if len(plot_data[plot_data['x'] == max_hour].index) == 0:
-        plot_data =  plot_data.append({
-            'x': max_hour,
-            'charging-vehicle': 0
-        }, ignore_index=True)
+
+    # Fill missing values with zeros
+    for hour in range(0, max_hour):
+        if len(plot_data[plot_data['x'] == hour].index) == 0:
+            plot_data =  plot_data.append({
+                'x': hour,
+                'charging-vehicle': 0
+            }, ignore_index=True)
+
     plot_data = plot_data.sort_values(by=['x'])
     return plot_data
 
@@ -115,7 +146,7 @@ def plot_util_barplot():
     if plotting_engine == 'pyplot':
         fig, ax = plt.subplots(num_rows, col, sharex=True, sharey=True)
         row = 0
-        for iteration in range_inclusive(first_iteration, last_iteration, step_size):
+        for iteration in iterations:
             (x, y) = plot_iteration(iteration)
             ax[row].bar(x, y, label='Iteration '+str(iteration))
             ax[row].legend(loc='upper left')
@@ -135,7 +166,7 @@ def plot_util_barplot():
     else:
         plotly_figure = make_subplots(rows=num_rows, cols=1, subplot_titles=subplot_titles, shared_xaxes=True, vertical_spacing=0.02)
         row = 1
-        for iteration in range_inclusive(first_iteration, last_iteration, step_size):
+        for iteration in iterations:
             (x, y) = plot_iteration(iteration)
             plotly_figure.add_trace(
                 go.Bar(
@@ -187,7 +218,7 @@ def plot_charging_vehicles():
     y_title = '# of charging vehicles'
 
     # Get min max values
-    for iteration in range_inclusive(first_iteration, last_iteration, step_size):
+    for iteration in iterations:
         working_dir = get_iteration_dir(run_dir, iteration)
         if os.path.exists(working_dir + "chargingNumberVehicles.csv"):
             plot_data = pd.read_csv(working_dir + "chargingNumberVehicles.csv")
@@ -199,7 +230,7 @@ def plot_charging_vehicles():
         fig, axes = plt.subplots(num_rows, col, sharex=True, sharey=True, figsize=(8,8))
         row = 0
         iteration = first_iteration
-        for iteration in range_inclusive(first_iteration, last_iteration, step_size):
+        for iteration in iterations:
             plot_data = get_plotdata_charging_vehicles(iteration)
             if last_iteration > first_iteration:
                 ax = axes[row]
@@ -227,7 +258,7 @@ def plot_charging_vehicles():
     else:
         plotly_figure = make_subplots(rows=num_rows, cols=1, subplot_titles=subplot_titles, shared_xaxes=True, vertical_spacing=0.02)
         row = 1
-        for iteration in range_inclusive(first_iteration, last_iteration, step_size):
+        for iteration in iterations:
             plot_data = get_plotdata_charging_vehicles(iteration)
 
             plotly_figure.add_trace(
@@ -253,7 +284,7 @@ def plot_charging_vehicles():
 
 
 def plot_charging_events():
-    for iteration in range_inclusive(first_iteration, last_iteration, step_size):
+    for iteration in iterations:
         working_dir = get_iteration_dir(run_dir, iteration)
         plot_data = pd.read_csv(working_dir + "activityType.csv")
         fig, ax = plt.subplots(figsize=(8,6))
@@ -455,9 +486,8 @@ def plot_heatmaps(show_total_fuel = True, show_avg_duration = False, show_avg_fu
 
     plt.show()
 
-
 def main():
-    subplot_titles = ["Iteration "+str(iteration) for iteration in range_inclusive(first_iteration, last_iteration, step_size)]
+    subplot_titles = ["Iteration "+str(iteration) for iteration in iterations]
 
     if show_charger_util:
         plot_util_barplot()
@@ -468,10 +498,9 @@ def main():
     if show_activity_types:
         plot_charging_events()
 
-    if False:
-        last_iteration = get_last_iteration(run_dir)
-        plotly_figure = make_subplots(rows=1, cols=1, subplot_titles=("Iteration " + str(last_iteration), ""), shared_xaxes=True, vertical_spacing=0.02)
-        plot_iteration(last_iteration, 1, 1, plotly_figure)
+    if show_heatmap_fuel or show_heatmap_avg_fuel or show_heatmap_avg_duration:
+        plot_heatmaps(show_heatmap_fuel, show_heatmap_avg_duration, show_heatmap_avg_fuel)
+
 
 
 if __name__ == '__main__':
