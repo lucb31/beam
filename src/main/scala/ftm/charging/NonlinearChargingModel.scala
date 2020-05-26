@@ -12,7 +12,7 @@ object NonlinearChargingModel {
     var updatedEnergyLevelInJoule = currentEnergyLevelInJoule
     var currentTimestep = 1 // Start at 1 to avoid division by zero
     while(updatedEnergyLevelInJoule < chargingLimits._2) {
-      val currentChargingPowerInKw = NonlinearChargingModel.calcChargingPower(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw)
+      val currentChargingPowerInKw = NonlinearChargingModel.calcChargingPower(updatedEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw)
       val stepEnergyInJoule = stepSize * currentChargingPowerInKw * 1000 // 3.6e6 / 3600 = 1000
       currentTimestep += stepSize
       updatedEnergyLevelInJoule += stepEnergyInJoule
