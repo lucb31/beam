@@ -1,5 +1,5 @@
 import scandir
-
+import mapclassify
 
 colors=['#0065BD', '#003359', '#98C6EA', '#7F7F7F', '#CCCCCC', '#A2AD00', '#E37222']
 def get_working_dir(base_dir, iteration):
@@ -55,3 +55,27 @@ def range_inclusive(start, stop, step):
     inclusive_range = [val for val in range(start, stop, step)]
     inclusive_range.append(stop)
     return inclusive_range
+
+
+def mask_munich_road_shape(path_to_munich_shape, path_to_munich_polygon, path_to_munich_road_masked):
+    munich_enclosing_roads = gpd.read_file(path_to_munich_shape)
+    munich_enclosing_roads.to_crs(crs=crs)
+    munich_polygon = gpd.read_file(path_to_munich_polygon)
+    munich_polygon.to_crs(crs=crs)
+    mask = munich_enclosing_roads.within(munich_polygon.geometry[0])
+    munich_enclosing_roads_masked = munich_enclosing_roads[mask]
+    munich_enclosing_roads_masked[['osm_id', 'name', 'z_order', 'geometry']].to_file(path_to_munich_road_masked)
+
+
+def scale_within_boundaries(minval, maxval):
+    def scalar(val):
+        new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
+        bin = new_scheme.yb[0]
+        return bin*2 + 5
+    return scalar
+
+
+def scale_by_scheme(val, scheme):
+    new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
+    bin = new_scheme.yb[0]
+    return (bin*2 + 5)*6

@@ -10,7 +10,7 @@ from matplotlib import cm
 import numpy as np
 
 from python.ftm.analyze_events import get_refuel_events_from_events_csv
-from python.ftm.util import get_latest_run, get_run_dir, range_inclusive
+from python.ftm.util import get_latest_run, get_run_dir, range_inclusive, scale_by_scheme, get_iteration_dir
 
 ### CONFIG ####
 
@@ -31,7 +31,7 @@ taz_centers_crs = "EPSG:31468"
 iteration_start = 1
 iteration_end = 1
 iteration_step = 1
-use_small_lis = True
+use_small_lis = False
 cmap_name = 'inferno'
 color_TUM_BLUE = '#0065BD'
 plot_only_chargers = False
@@ -47,31 +47,7 @@ if use_small_lis:
 ### END CONFIG ####
 
 
-def mask_munich_road_shape(path_to_munich_shape, path_to_munich_polygon, path_to_munich_road_masked):
-    munich_enclosing_roads = gpd.read_file(path_to_munich_shape)
-    munich_enclosing_roads.to_crs(crs=crs)
-    munich_polygon = gpd.read_file(path_to_munich_polygon)
-    munich_polygon.to_crs(crs=crs)
-    mask = munich_enclosing_roads.within(munich_polygon.geometry[0])
-    munich_enclosing_roads_masked = munich_enclosing_roads[mask]
-    munich_enclosing_roads_masked[['osm_id', 'name', 'z_order', 'geometry']].to_file(path_to_munich_road_masked)
-
-
-def scale_within_boundaries(minval, maxval):
-    def scalar(val):
-        new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
-        bin = new_scheme.yb[0]
-        return bin*2 + 5
-    return scalar
-
-
-def scale_by_scheme(val, scheme):
-    new_scheme = mapclassify.UserDefined([val], bins=scheme.bins)
-    bin = new_scheme.yb[0]
-    return (bin*2 + 5)*6
-
-
-def main():
+def plot_heatmaps(show_total_fuel, show_avg_duration, show_avg_fuel):
     # Load map data
     print("Loading map data...")
     taz_centers = pd.read_csv(path_to_taz_centers_csv)
@@ -151,7 +127,7 @@ def main():
         chargers = geo_df_masked.centroid.geometry.values
         x_c = [c.x for c in chargers]
         y_c = [c.y for c in chargers]
-        if plot_total_fuel:
+        if show_total_fuel:
             fig, ax = plt.subplots(figsize=(12, 9))
             scheme = mapclassify.Quantiles([0, total_fuel_max], k=10)
             """
@@ -201,7 +177,7 @@ def main():
             print('Saving file to' + fig_path)
             plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
 
-        if plot_avg_duration:
+        if show_avg_duration:
             scheme = mapclassify.Quantiles([0, avg_duration_max], k=10)
             values = [avg_duration for avg_duration in zip(geo_df_masked.avgDuration)]
             sizes = [scale_by_scheme(value, scheme) for value in values]
@@ -228,7 +204,7 @@ def main():
             print('Saving file to' + fig_path)
             plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
 
-        if plot_avg_fuel:
+        if show_avg_fuel:
             scheme = mapclassify.Quantiles([0, avg_fuel_max], k=10)
             values = [val for val in zip(geo_df_masked.avgFuel)]
             sizes = [scale_by_scheme(value, scheme) for value in values]
@@ -257,6 +233,10 @@ def main():
             plt.savefig(fig_path, dpi=300, bbox_inches='tight', pad_inches=0)
 
     plt.show()
+
+
+def main():
+    plot_heatmaps(plot_total_fuel, plot_avg_duration, plot_avg_fuel)
 
 
 if __name__ == '__main__':
