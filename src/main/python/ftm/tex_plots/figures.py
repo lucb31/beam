@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.ticker
+from matplotlib import rc
 import tikzplotlib
 import locale
 import numpy as np
@@ -10,6 +11,11 @@ from scipy.interpolate import griddata
 colors=['#0065BD', '#003359', '#98C6EA', '#7F7F7F', '#CCCCCC', '#A2AD00', '#E37222']
 legend_loc = "center"
 legend_bbox_to_anchor = (-0.1, 0)
+image_format = 'png'
+image_format = 'svg'
+
+font = {'size': 20}
+rc('font', **font)
 
 
 def plot_pie_with_annotations(sizes, labels, startangle=-90):
@@ -185,8 +191,8 @@ def plot_kennfeld_verbrauch():
         max_val = int(splitted[1].split(']')[0])
         return min_val, max_val
 
-    path_to_csv = '/home/lucas/IdeaProjects/beam/test/input/munich-simple/default-energy-primary-flat-expensive.csv'
-    path_to_csv = '/home/lucas/IdeaProjects/beam/test/input/munich-simple/default-energy-primary-flat.csv'
+    path_to_csv = '/test/input/munich-simple/default-energy-primary-flat-expensive.csv'
+    path_to_csv = '/test/input/munich-simple/default-energy-primary-flat.csv'
     num_lanes_bin = '(0, 1]'
     #num_lanes_bin = '(0, 5]'
     linspace_steps = 50
@@ -243,8 +249,8 @@ def plot_kennfeld_verbrauch():
     #x *= 1.60934    # mph to kmh
     x *= 1.60934 / 3.6    # mph to m/s
     z *= 22.37 # kWh / 100miles to J/m
-    z *= 10 # Plausible werte
-    print('z min is ', z.min())
+    #z *= 10 # Plausible werte
+    print('z liegt zwischen ', z.min(),' und ',z.max())
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -255,7 +261,10 @@ def plot_kennfeld_verbrauch():
     ax.set_zlabel('Verbrauch in J/m', fontsize=font_size)
     ax.set_zlim([0, z.max()])
     ax.tick_params(labelsize=font_size)
-    plt.savefig('/home/lucas/IdeaProjects/beam/output/kennfeld_verbrauch.png', dpi=300, bbox_inches='tight', pad_inches=0.15)
+    figure_path = '/home/lucas/IdeaProjects/beam/output/kennfeld_verbrauch_beam.'+image_format
+    figure_path = '/output/kennfeld_verbrauch_beam.png'
+    print('Saving figure to ', figure_path)
+    plt.savefig(figure_path, dpi=300, bbox_inches='tight', pad_inches=0.15)
     plt.show()
     """
     for speed_bin, grade_bin, rate in zip(df['speed_mph_float_bins'], df['grade_percent_float_bins'], df['rate']):
@@ -286,14 +295,15 @@ def plot_scoring_parameters():
     ax.set_ylabel('Resultierender Nutzen')
     ax.set_ylim([0,1.1])
     ax.legend(loc='upper left')
-    plt.savefig('/home/lucas/IdeaProjects/beam/output/scoring_parameter_soc.png', dpi=300, bbox_inches='tight', pad_inches=0)
+    plt.savefig('/home/lucas/IdeaProjects/beam/output/scoring_parameter_soc.'+image_format, dpi=300, bbox_inches='tight', pad_inches=0)
 
     fig, ax = plt.subplots(figsize=(8,8))
     ax.plot(xs_walk_dist, ys_walk_dist, color=colors[0])
     ax.set_xlabel('Laufdistanz in m')
     ax.set_ylabel('Resultierender Nutzen')
     ax.set_ylim([0,1.1])
-    plt.savefig('/home/lucas/IdeaProjects/beam/output/scoring_parameter_walk_dist.png', dpi=300, bbox_inches='tight', pad_inches=0)
+    ax.set_xlim([0, 700])
+    plt.savefig('/home/lucas/IdeaProjects/beam/output/scoring_parameter_walk_dist.'+image_format, dpi=300, bbox_inches='tight', pad_inches=0)
     plt.show()
     """
     fig, ax = plt.subplots(1, 2, figsize=(12,6))
@@ -326,9 +336,11 @@ def plot_runtimes():
     ax.set_xlim([10,100000])
     ax.set_ylabel('Laufzeit in s')
     ax.set_ylim([0,8000])
+    ax.tick_params(length=6, width=2, which='major')
+    ax.tick_params(length=4, width=1.5, which='minor')
     ax.grid()
     ax.legend(loc='upper left')
-    plt.savefig('/home/lucas/IdeaProjects/beam/output/benchmark_runtimes.png', dpi=300, bbox_inches='tight', pad_inches=0)
+    plt.savefig('/home/lucas/IdeaProjects/beam/output/benchmark_runtimes.'+image_format, dpi=300, bbox_inches='tight', pad_inches=0)
 
 
 def plot_cpu_ram_usage(seperate=True):
@@ -348,9 +360,11 @@ def plot_cpu_ram_usage(seperate=True):
         ax_ram.set_xlim([10,100000])
         ax_ram.set_ylabel('Maximale Arbeitsspeichernutzung in MB')
         ax_ram.set_ylim([0,12000])
+        ax_ram.tick_params(length=6, width=2, which='major')
+        ax_ram.tick_params(length=4, width=1.5, which='minor')
         ax_ram.grid()
         ax_ram.legend(loc='upper left')
-        plt.savefig('/home/lucas/IdeaProjects/beam/output/benchmark_ram_usage.png', dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.savefig('/home/lucas/IdeaProjects/beam/output/benchmark_ram_usage.'+image_format, dpi=300, bbox_inches='tight', pad_inches=0)
 
         #ax_cpu = ax_ram.twinx()
         fig, ax_cpu = plt.subplots(figsize=(8,8))
@@ -364,8 +378,10 @@ def plot_cpu_ram_usage(seperate=True):
         ax_cpu.set_ylabel('Durchschnittliche CPU Auslastung in %')
         ax_cpu.set_ylim([0,100])
         ax_cpu.grid()
+        ax_cpu.tick_params(length=6, width=2, which='major')
+        ax_cpu.tick_params(length=4, width=1.5, which='minor')
         ax_cpu.legend(loc='upper left')
-        plt.savefig('/home/lucas/IdeaProjects/beam/output/benchmark_cpu_usage.png', dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.savefig('/home/lucas/IdeaProjects/beam/output/benchmark_cpu_usage.'+image_format, dpi=300, bbox_inches='tight', pad_inches=0)
 
 
 def plot_nonlinear_charging():
@@ -393,15 +409,21 @@ def calcNormalizedWalkingDistance(walkingDistance, maxWalkingDistance, residualU
     c = max(b, residualUtility)
     return max(residualUtility**(walkingDistance / maxWalkingDistance), residualUtility)
 
-plot_nonlinear_charging()
-#plot_cpu_ram_usage()
-#plot_runtimes()
-#plt.show()
-#plot_scoring_parameters()
-#plot_kennfeld_verbrauch()
-#plot_neuzulassungen()
-#plot_ladestationen()
-#plot_fahrzeugklassen()
-#plot_verteilung_ladestationen()
-#plot_neubedarf_ladestationen()
-#plt.show()
+
+def main():
+    #plot_nonlinear_charging()
+    #plot_cpu_ram_usage()
+    #plot_runtimes()
+    #plt.show()
+    #plot_scoring_parameters()
+    plot_kennfeld_verbrauch()
+    #plot_neuzulassungen()
+    #plot_ladestationen()
+    #plot_fahrzeugklassen()
+    #plot_verteilung_ladestationen()
+    #plot_neubedarf_ladestationen()
+    #plt.show()
+
+
+if __name__ == '__main__':
+    main()

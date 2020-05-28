@@ -36,23 +36,37 @@ def get_vehicle_id_from_population_csv(path_to_population_csv, person_id):
 
 def filter_plans_by_vehicle_id(filepath_households_xml, filepath_plans_xml, vehicle_id = 0, output_filename=None):
     # get person id from households.xml
-    tree = ET.parse(filepath_households_xml)
+    if '.gz' in str(filepath_households_xml):
+        with gzip.open(filepath_households_xml, 'rb') as f_in:
+            tree = ET.parse(f_in)
+    else:
+        tree = ET.parse(filepath_households_xml)
     person_id = 0
+    household_tag = '{dtd}household'
+    household_tag = '{http://www.matsim.org/files/dtd}household'
+
     for parent in tree.iter():
-        for household in parent.findall('{dtd}household'):
+        for household in parent.findall(household_tag):
             if 'id' in household.attrib:
                 household_id = 0
                 try:
                     household_id = int(household.attrib['id'])
                 except ValueError as ex:
                     household_id = 0
-                if household_id == vehicle_id:
+                if household_id == int(vehicle_id):
+                    for members_element in household.findall('{http://www.matsim.org/files/dtd}members'):
+                        for person_id_element in members_element.iter():
+                            if 'refId' in person_id_element.attrib:
+                                person_id = person_id_element.attrib['refId']
+                    """
                     for household_elements in household.iter():
                         for person_id_element in household_elements.findall('{dtd}personId'):
                             if 'refId' in person_id_element.attrib:
                                 person_id = person_id_element.attrib['refId']
+                                """
 
-
+    if person_id != 0:
+        print('Found person ID: ', person_id)
     # get plans form plans.xml
     with gzip.open(filepath_plans_xml, 'rb') as f_in:
         tree = ET.parse(f_in)
@@ -72,3 +86,13 @@ def filter_plans_by_vehicle_id(filepath_households_xml, filepath_plans_xml, vehi
 
         return tree
 
+
+def main():
+    filepath_households = '/data/lucas/SA/Simulation Runs/munich-simple__2020-04-22_11-35-35/outputHouseholds.xml.gz'
+    filepath_plans = '/data/lucas/SA/Simulation Runs/munich-simple__2020-04-22_11-35-35/ITERS/it.50/50.plans.xml.gz'
+    plans_xml = filter_plans_by_vehicle_id(filepath_households, filepath_plans, vehicle_id=475)
+    pass
+
+
+if __name__ == '__main__':
+    main()
