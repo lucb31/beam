@@ -63,7 +63,7 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
     person.getSelectedPlan.getAttributes.putAttribute("totalDistanceToDestinationInM", totalDistanceToDestinationsInM)
 
     // Normalize scoring parameters
-    val walkingDistScore = calcNormalizedWalkingDistance(totalDistanceToDestinationsInM, 500, 0.2)
+    val walkingDistScore = calcNormalizedWalkingDistance(totalDistanceToDestinationsInM, beamConfig.ftm.scoring.maxWalkingDistanceInM, beamConfig.ftm.scoring.walkingDistanceResidualUtility)
     val minSocScore = calculateMinSocRiskAcceptance(minSoc)
     val endSocScore = Math.max(0, endSoc)
 
@@ -116,6 +116,7 @@ class ModeChoiceDriveIfAvailable(val beamServices: BeamServices) extends ModeCho
           val linksAreConnected = fromConnectByInLinks || fromConnectByOutLinks || toConnectByInLinks || toConnectByOutLinks
           // Same link is good enough
           if (drivingEndpointLinkId.toString != destinationActivityLocationLinkId.toString && !linksAreConnected) {
+            // If links not connected, calculate distance
             val destinationActivityLocationUtm = destinationActivity.getCoord
             distanceInM = this.beamServices.geo.distUTMInMeters(destinationActivityLocationUtm, drivingEndPointUtm)
           }
