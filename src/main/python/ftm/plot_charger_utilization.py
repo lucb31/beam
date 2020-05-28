@@ -40,8 +40,6 @@ baseDir = "/data/lucas/SA/Simulation Runs/"
 latest_run = get_latest_run(baseDir)
 #latest_run = "munich-simple__500agents_72h_30iters__2020-05-13_10-56-07"
 #latest_run = "munich-simple__2020-04-22_11-35-35"
-latest_run = "munich-case-study_5000Agents_30Iters__2020-05-21_10-17-56"
-run_dir = get_run_dir(baseDir, latest_run)
 
 first_iteration = 30
 last_iteration = 30
@@ -49,6 +47,7 @@ max_hour = 72
 step_size = 16
 iterations = range_inclusive(first_iteration, last_iteration, step_size)
 
+run_dir = get_run_dir(baseDir, latest_run)
 compare_iterations = False
 show_charger_util = False
 show_number_of_charging_vehicles = True
@@ -94,7 +93,7 @@ def get_plotdata_charging_vehicles(iteration):
     return plot_data
 
 
-def plot_iteration(iteration):
+def get_plotdata_util_barplot(run_dir, iteration):
     # Setup directory
     working_dir = get_iteration_dir(run_dir, iteration)
     print("-------------- ITERATION", iteration, "--------------------")
@@ -133,26 +132,41 @@ def plot_iteration(iteration):
     """
     return x, y
 
-def plot_util_barplot():
-    global last_iteration
-    num_rows = int(last_iteration / step_size) + 1
-    if last_iteration % step_size > 0:
-        num_rows += 1
-    if last_iteration == first_iteration:
-        num_rows = 1
+
+def plot_util_barplot(run_dir, iterations, y_ticks=[], legend_loc='upper left', iteration_label_on_second_y=False, image_format='png'):
+    num_rows = len(iterations)
     col = 1
     y_min = 999999
     y_max = 0
     if plotting_engine == 'pyplot':
         fig, ax = plt.subplots(num_rows, col, sharex=True, sharey=True)
-        row = 0
+        plot_row = 0
         for iteration in iterations:
-            (x, y) = plot_iteration(iteration)
-            ax[row].bar(x, y, label='Iteration '+str(iteration))
-            ax[row].legend(loc='upper left')
+            (x, y) = get_plotdata_util_barplot(run_dir, iteration)
+            if y.min() < y_min:
+                y_min = y.min()
+            if y.max() > y_max:
+                y_max = y.max()
+            ax[plot_row].bar(x, y, label='Iteration '+str(iteration))
+            ax[plot_row].legend(loc=legend_loc)
             #ax[row].plot(pd.Series([0, x.max()]), pd.Series([y.mean(), y.mean()]), label="Iteration " + str(iteration) + " Durchschnitt")
             print('Iteration ', iteration, ', avg ', y.mean(), 'kWh')
-            row += 1
+            plot_row += 1
+
+        # fix y axis scale
+        plot_row = 0
+        for iteration in iterations:
+            if len(y_ticks) == 0:
+                ax[plot_row].set_yticks([0, y_max])
+            else:
+                ax[plot_row].set_yticks(y_ticks)
+                ax[plot_row].set_ylim([0, y_ticks[-1]*1.1])
+
+            if iteration_label_on_second_y:
+                ax2 = ax[plot_row].twinx()
+                ax2.set_yticks([])
+                ax2.set_ylabel('Iteration '+str(iteration))
+            plot_row += 1
 
         # add a big axis, hide frame
         fig.add_subplot(111, frameon=False)
@@ -160,21 +174,23 @@ def plot_util_barplot():
         plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
         plt.xlabel("Parkzone der Ladestation")
         plt.ylabel("Übertragene Energie in kWh")
-        print('Saving figure to', path_to_output_png_charger_util)
-        plt.savefig(path_to_output_png_charger_util, dpi=300, bbox_inches='tight', pad_inches=0)
+        path_to_output_png = run_dir+'summaryStats/charger_utilization_barplot.' + image_format
+        print('Saving figure to', path_to_output_png)
+        plt.savefig(path_to_output_png, dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.tight_layout()
         plt.show()
     else:
         plotly_figure = make_subplots(rows=num_rows, cols=1, subplot_titles=subplot_titles, shared_xaxes=True, vertical_spacing=0.02)
-        row = 1
+        plot_row = 1
         for iteration in iterations:
-            (x, y) = plot_iteration(iteration)
+            (x, y) = get_plotdata_util_barplot(run_dir, iteration)
             plotly_figure.add_trace(
                 go.Bar(
                     x=x,
                     y=y,
                     name="It " + str(iteration) + " (events.xml)"
                 ),
-                row=row,
+                row=plot_row,
                 col=col
             )
             plotly_figure.add_trace(
@@ -183,19 +199,19 @@ def plot_util_barplot():
                     y=pd.Series([y.mean(), y.mean()]),
                     name="It " + str(iteration) + " Average"
                 ),
-                row=row,
+                row=plot_row,
                 col=col
             )
             if y.min() < y_min: y_min = y.min()
             if y.max() > y_max: y_max = y.max()
-            row += 1
+            plot_row += 1
 
-        for y_axis in range(1, row):
+        for y_axis in range(1, plot_row):
             plotly_figure['layout']['yaxis'+str(y_axis)].update(title=ytitle)
             plotly_figure['layout']['yaxis'+str(y_axis)].update(range=[0, y_max * 1.1])
 
-        plotly_figure['layout']['xaxis'+str(row-1)].update(title="Charging TAZ")
-        plotly_figure['layout']['xaxis'+str(row-1)].update(range=[100, 700])
+        plotly_figure['layout']['xaxis'+str(plot_row-1)].update(title="Charging TAZ")
+        plotly_figure['layout']['xaxis'+str(plot_row-1)].update(range=[100, 700])
         plotly_figure.update_layout(
             title_text="Charger utilization for simulation "+latest_run,
             height=350
@@ -490,7 +506,7 @@ def main():
     subplot_titles = ["Iteration "+str(iteration) for iteration in iterations]
 
     if show_charger_util:
-        plot_util_barplot()
+        plot_util_barplot(run_dir, iterations)
 
     if show_number_of_charging_vehicles:
         plot_charging_vehicles()
