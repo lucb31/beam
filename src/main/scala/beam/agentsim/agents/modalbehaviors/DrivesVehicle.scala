@@ -878,6 +878,9 @@ trait DrivesVehicle[T <: DrivingData] extends BeamAgent[T] with Stash {
       vehicle.refuelingSessionDurationAndEnergyInJoules(Some(currentTick - vehicle.getChargerConnectedTick()))
 
     log.debug("Ending refuel session for {} in tick {}. Provided {} J.", vehicle.id, currentTick, energyInJoules)
+    // If soc was negative, first reset it to 0
+    if (vehicle.primaryFuelLevelInJoules < 0)
+      vehicle.addFuel((-1) * vehicle.primaryFuelLevelInJoules)
     vehicle.addFuel(energyInJoules)
 
     val refuelSessionEvent: RefuelSessionEvent = new RefuelSessionEvent(

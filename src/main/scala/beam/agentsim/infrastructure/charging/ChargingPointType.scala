@@ -146,11 +146,13 @@ object ChargingPointType {
       chargingLimits._1,
       ChargingPointType.getChargingPointInstalledPowerInKw(chargingPointType)
     )
+    // Limit charging energy to battery capacity
+    val vehicleEnergyLevelInJoule = Math.max(currentEnergyLevelInJoule, 0)
 
     val chargingPowerInKw = chargingCalculationMode match {
       case "Linear" => maxChargingPowerInKw
-      case "LinearSocDependent" => NonlinearChargingModel.calcChargingPower(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw)
-      case "NonLinear" => NonlinearChargingModel.calcAvgChargingPowerNumeric(currentEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimits, chargingCalculationStepSize)
+      case "LinearSocDependent" => NonlinearChargingModel.calcChargingPower(vehicleEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw)
+      case "NonLinear" => NonlinearChargingModel.calcAvgChargingPowerNumeric(vehicleEnergyLevelInJoule, batteryCapacityInJoule, maxChargingPowerInKw, chargingLimits, chargingCalculationStepSize)
       case _ => maxChargingPowerInKw
     }
 
@@ -158,7 +160,7 @@ object ChargingPointType {
       Math.min(
         sessionLengthLimiter,
         Math.round(
-          (chargingLimits._2 - currentEnergyLevelInJoule) / 3.6e6 / chargingPowerInKw * 3600.0
+          (chargingLimits._2 - vehicleEnergyLevelInJoule) / 3.6e6 / chargingPowerInKw * 3600.0
         )
       ),
       0
