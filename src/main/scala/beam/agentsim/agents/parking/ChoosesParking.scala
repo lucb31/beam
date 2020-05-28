@@ -57,24 +57,20 @@ trait ChoosesParking extends {
 
       val remainingTripData = calculateRemainingTripData(personData)
 
-      var allowCharging = true
-      var forceCharging = false
+      var useChargingSpotIfAvailable = false
       if (beamServices.beamConfig.ftm.chargingReplanning) {
-        allowCharging = false
-        forceCharging = false
+        useChargingSpotIfAvailable = false
         val chargingSeq = PopulationUtil.getChargeAtActivityBooleanSeq(matsimPlan)
         if (chargingSeq.size < personData.currentActivityIndex + 1) {
           logger.error("Charging Sequence {} is out of bounds for activity {}. ", chargingSeq.toString(), currentActivity(personData))
         }
         else if (chargingSeq(personData.currentActivityIndex)) {
-          allowCharging = true
-          forceCharging = true
+          useChargingSpotIfAvailable = true
         }
       }
       // Do not charge vehicles with negative soc
       if (currentBeamVehicle.primaryFuelLevelInJoules < 0) {
-        allowCharging = false
-        forceCharging = false
+        useChargingSpotIfAvailable = false
       }
 
 
@@ -85,8 +81,8 @@ trait ChoosesParking extends {
         remainingTripData,
         attributes.valueOfTime,
         parkingDuration,
-        useChargingSpotIfAvailable = allowCharging,
-        forceCharging = forceCharging
+        useChargingSpotIfAvailable = useChargingSpotIfAvailable,
+        chargingReplanning = beamServices.beamConfig.ftm.chargingReplanning
       )
   }
   when(ReleasingParkingSpot, stateTimeout = Duration.Zero) {

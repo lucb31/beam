@@ -29,7 +29,7 @@ case class ParkingInquiry(
   reserveStall: Boolean = true,
   requestId: Int = ParkingManagerIdGenerator.nextId, // note, this expects all Agents exist in the same JVM to rely on calling this singleton
   useChargingSpotIfAvailable: Boolean = true,
-  forceCharging: Boolean = false
+  chargingReplanning: Boolean = false
 )
 
 object ParkingInquiry {

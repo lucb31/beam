@@ -77,22 +77,28 @@ class ZonalParkingManager(
           inquiry.beamVehicle match {
             case Some(vehicleType) =>
               vehicleType.beamVehicleType.primaryFuelType match {
-                case Electricity => inquiry.useChargingSpotIfAvailable match {
-                  case true => true
-                  case _ => false
+                case Electricity => inquiry.chargingReplanning match {
+                  case true => inquiry.useChargingSpotIfAvailable match {
+                    case true => true
+                    case _ => false // No charging activity planned
+                  }
+                  case _ => true  // FTM charging replanning inactive
                 }
-                case _           => false
+                case _           => false // Vehicle is not electric
               }
-            case _ => false
+            case _ => false   // No Vehicle type found
           }
       }
 
       // allow non-charger ParkingZones
       val returnSpotsWithoutChargers: Boolean = inquiry.activityType.toLowerCase match {
         case "charge" => false
-        case _        => inquiry.forceCharging match {
-          case true => false
-          case _ => true
+        case _        => inquiry.chargingReplanning match {
+          case true => inquiry.useChargingSpotIfAvailable match {
+            case true => false
+            case _ => true  // No charging activity planned
+          }
+          case _ => true    // FTM charging replanning inactive
         }
       }
 
@@ -277,7 +283,7 @@ class ZonalParkingManager(
               inquiry.destinationUtm.getY + 2000,
               inquiry.destinationUtm.getY - 2000
             )
-            val newStall = inquiry.forceCharging match {
+            val newStall = inquiry.useChargingSpotIfAvailable match {
               case true => {
                 // Within-Day Replanning needed
                 ParkingStall.defaultStall(inquiry.destinationUtm)
